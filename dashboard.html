@@ -496,28 +496,31 @@ select option { background: var(--card); color: var(--text); }
   height: 24px;
   background: var(--bg-elevated);
   border-radius: 4px;
-  overflow: visible;
+  overflow: hidden;
   position: relative;
 }
 .bar-fill {
   height: 100%;
   border-radius: 4px;
   transition: width 0.6s ease;
-  display: flex;
-  align-items: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.bar-fill span.bar-text {
+  display: none;
+}
+.bar-track span.bar-text-outside {
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  transform: translateY(-50%);
   font-size: 11px;
   font-weight: 600;
   font-family: 'IBM Plex Mono', monospace;
-  color: rgba(255,255,255,0.9);
-  position: relative;
-  overflow: visible;
-  white-space: nowrap;
-}
-.bar-fill span.bar-text {
-  position: absolute;
-  left: calc(100% + 8px);
   color: var(--text-muted);
-  font-size: 11px;
+  white-space: nowrap;
+  z-index: 1;
   pointer-events: none;
 }
 .bar-fill.accent { background: linear-gradient(90deg, var(--accent), #60a5fa); }
@@ -1600,7 +1603,7 @@ function renderAnalytics(games) {
     return `<div class="bar-row">
       <span class="bar-label">${code}</span>
       <div class="bar-track">
-        <div class="bar-fill yellow" style="width:${pct}%"><span class="bar-text">${count}x ${name}</span></div>
+        <div class="bar-fill yellow" style="width:${pct}%"></div><span class="bar-text-outside">${count}x ${name}</span>
       </div>
     </div>`;
   }).join('');
@@ -1612,7 +1615,7 @@ function renderAnalytics(games) {
     return `<div class="bar-row">
       <span class="bar-label">#${p.number}</span>
       <div class="bar-track">
-        <div class="bar-fill red" style="width:${pct}%"><span class="bar-text">${p.pim} PIM — ${toTitleCase(p.name)}</span></div>
+        <div class="bar-fill red" style="width:${pct}%"></div><span class="bar-text-outside">${p.pim} PIM — ${toTitleCase(p.name)}</span>
       </div>
     </div>`;
   }).join('');
@@ -1679,7 +1682,7 @@ function renderAnalytics(games) {
     return `<div class="bar-row">
       <span class="bar-label" style="${isEagles ? 'color:var(--accent)' : ''}">#${p.number}</span>
       <div class="bar-track">
-        <div class="bar-fill ${isEagles ? 'accent' : 'red'}" style="width:${pct}%"><span class="bar-text">${p.pim} PIM — ${toTitleCase(p.name)} (${p.team})</span></div>
+        <div class="bar-fill ${isEagles ? 'accent' : 'red'}" style="width:${pct}%"></div><span class="bar-text-outside">${p.pim} PIM — ${toTitleCase(p.name)} (${p.team})</span>
       </div>
     </div>`;
   }).join('');
