@@ -4,7 +4,7 @@
     "division": "Under 10 AA",
     "season": "2025-2026",
     "totalGames": 37,
-    "generatedAt": "2026-03-08T04:44:39.631Z"
+    "generatedAt": "2026-03-08T12:20:48.219Z"
   },
   "games": [
     {
@@ -2769,7 +2769,7 @@
             "number": 75,
             "servedBy": 75,
             "player": "CHARLES ROBERTSON",
-            "minutes": "0",
+            "minutes": 0,
             "code": "PS",
             "offTime": "09:26",
             "startTime": "",

@@ -101,7 +101,7 @@ function parsePenalties(tableHtml) {
         number: parseInt(cells[1]) || cells[1],
         servedBy: parseInt(cells[2]) || cells[2],
         player: cells[3],
-        minutes: parseInt(cells[4]) || cells[4],
+        minutes: isNaN(parseInt(cells[4])) ? 0 : parseInt(cells[4]),
         code: cells[5],
         offTime: cells[6],
         startTime: cells[7],

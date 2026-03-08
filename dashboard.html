@@ -948,7 +948,7 @@ function buildPlayerStats(games) {
       sideData.penalties.forEach(p => {
         const penKey = `${teamName}|${p.player}`;
         if (players[penKey]) {
-          players[penKey].pim += p.minutes;
+          players[penKey].pim += (typeof p.minutes === 'number' ? p.minutes : parseInt(p.minutes) || 0);
         }
       });
     });
@@ -1579,7 +1579,7 @@ function renderAnalytics(games) {
       penaltyCounts[p.code] = (penaltyCounts[p.code] || 0) + 1;
       const key = p.player;
       if (!penaltyPlayers[key]) penaltyPlayers[key] = { name: p.name || p.player, pim: 0, count: 0, number: p.number };
-      penaltyPlayers[key].pim += p.minutes;
+      penaltyPlayers[key].pim += (typeof p.minutes === 'number' ? p.minutes : parseInt(p.minutes) || 0);
       penaltyPlayers[key].count++;
     });
   });
