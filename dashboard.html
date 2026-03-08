@@ -496,7 +496,7 @@ select option { background: var(--card); color: var(--text); }
   height: 24px;
   background: var(--bg-elevated);
   border-radius: 4px;
-  overflow: hidden;
+  overflow: visible;
   position: relative;
 }
 .bar-fill {
@@ -505,12 +505,20 @@ select option { background: var(--card); color: var(--text); }
   transition: width 0.6s ease;
   display: flex;
   align-items: center;
-  padding-left: 8px;
   font-size: 11px;
   font-weight: 600;
   font-family: 'IBM Plex Mono', monospace;
   color: rgba(255,255,255,0.9);
-  min-width: fit-content;
+  position: relative;
+  overflow: visible;
+  white-space: nowrap;
+}
+.bar-fill span.bar-text {
+  position: absolute;
+  left: calc(100% + 8px);
+  color: var(--text-muted);
+  font-size: 11px;
+  pointer-events: none;
 }
 .bar-fill.accent { background: linear-gradient(90deg, var(--accent), #60a5fa); }
 .bar-fill.green { background: linear-gradient(90deg, var(--green), #6ee7b7); }
@@ -712,46 +720,46 @@ select option { background: var(--card); color: var(--text); }
 /* Period breakdown bars */
 .period-breakdown {
   display: flex;
-  gap: 16px;
+  gap: 48px;
   align-items: flex-end;
   justify-content: center;
-  height: 140px;
-  padding-top: 20px;
+  height: 280px;
+  padding-top: 30px;
 }
 .period-bar-group {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 .period-bar-pair {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   align-items: flex-end;
-  height: 100px;
+  height: 220px;
 }
 .period-bar {
-  width: 28px;
-  border-radius: 4px 4px 0 0;
+  width: 56px;
+  border-radius: 6px 6px 0 0;
   position: relative;
   transition: height 0.6s ease;
-  min-height: 2px;
+  min-height: 3px;
 }
 .period-bar.gf { background: linear-gradient(180deg, var(--accent), rgba(56, 189, 248, 0.4)); }
 .period-bar.ga { background: linear-gradient(180deg, var(--red), rgba(248, 113, 113, 0.4)); }
 .period-bar .bar-val {
   position: absolute;
-  top: -18px;
+  top: -22px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 11px;
+  font-size: 14px;
   font-family: 'IBM Plex Mono', monospace;
   font-weight: 600;
 }
 .period-bar.gf .bar-val { color: var(--accent); }
 .period-bar.ga .bar-val { color: var(--red); }
 .period-bar-label {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--text-dim);
   font-family: 'IBM Plex Mono', monospace;
   font-weight: 600;
@@ -1592,7 +1600,7 @@ function renderAnalytics(games) {
     return `<div class="bar-row">
       <span class="bar-label">${code}</span>
       <div class="bar-track">
-        <div class="bar-fill yellow" style="width:${pct}%">${count}x ${name}</div>
+        <div class="bar-fill yellow" style="width:${pct}%"><span class="bar-text">${count}x ${name}</span></div>
       </div>
     </div>`;
   }).join('');
@@ -1604,7 +1612,7 @@ function renderAnalytics(games) {
     return `<div class="bar-row">
       <span class="bar-label">#${p.number}</span>
       <div class="bar-track">
-        <div class="bar-fill red" style="width:${pct}%">${p.pim} PIM — ${toTitleCase(p.name)}</div>
+        <div class="bar-fill red" style="width:${pct}%"><span class="bar-text">${p.pim} PIM — ${toTitleCase(p.name)}</span></div>
       </div>
     </div>`;
   }).join('');
@@ -1622,8 +1630,8 @@ function renderAnalytics(games) {
 
   const periods = [1, 2, 3];
   const periodBars = periods.map(p => {
-    const gfH = (periodGF[p] / maxPeriodGoals) * 90;
-    const gaH = (periodGA[p] / maxPeriodGoals) * 90;
+    const gfH = (periodGF[p] / maxPeriodGoals) * 200;
+    const gaH = (periodGA[p] / maxPeriodGoals) * 200;
     return `<div class="period-bar-group">
       <div class="period-bar-pair">
         <div class="period-bar gf" style="height:${gfH}px"><span class="bar-val">${periodGF[p]}</span></div>
@@ -1671,7 +1679,7 @@ function renderAnalytics(games) {
     return `<div class="bar-row">
       <span class="bar-label" style="${isEagles ? 'color:var(--accent)' : ''}">#${p.number}</span>
       <div class="bar-track">
-        <div class="bar-fill ${isEagles ? 'accent' : 'red'}" style="width:${pct}%">${p.pim} PIM — ${toTitleCase(p.name)} (${p.team})</div>
+        <div class="bar-fill ${isEagles ? 'accent' : 'red'}" style="width:${pct}%"><span class="bar-text">${p.pim} PIM — ${toTitleCase(p.name)} (${p.team})</span></div>
       </div>
     </div>`;
   }).join('');
