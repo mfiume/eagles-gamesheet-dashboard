@@ -1,0 +1,1816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Toronto Eagles — Gamesheet Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #060a14;
+  --bg-elevated: #0a0f1a;
+  --card: #0e1525;
+  --card-hover: #121c30;
+  --border: #1a2744;
+  --border-light: #243352;
+  --text: #dce4f5;
+  --text-muted: #8b9ec2;
+  --text-dim: #556b94;
+  --accent: #38bdf8;
+  --accent-dim: rgba(56, 189, 248, 0.15);
+  --green: #34d399;
+  --green-dim: rgba(52, 211, 153, 0.15);
+  --red: #f87171;
+  --red-dim: rgba(248, 113, 113, 0.15);
+  --yellow: #fbbf24;
+  --yellow-dim: rgba(251, 191, 36, 0.15);
+  --purple: #a78bfa;
+  --purple-dim: rgba(167, 139, 250, 0.15);
+  --grid: #152035;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', 'Inter', -apple-system, sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+.dashboard-root { max-width: 1400px; margin: 0 auto; padding: 0 24px; }
+
+/* Hero */
+.hero {
+  padding: 48px 0 24px;
+  text-align: center;
+  position: relative;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -50%; right: -50%; bottom: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(56, 189, 248, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: rgba(56, 189, 248, 0.06);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: 'IBM Plex Mono', monospace;
+  margin-bottom: 16px;
+}
+.hero-badge-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.hero h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1.15;
+  margin-bottom: 10px;
+  background: linear-gradient(135deg, #e2e8f0 0%, #38bdf8 50%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero p {
+  color: var(--text-muted);
+  font-size: 15px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 32px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab-btn {
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  transition: color 0.2s;
+  letter-spacing: 0.3px;
+}
+.tab-btn:hover { color: var(--text-muted); }
+.tab-btn.active {
+  color: var(--accent);
+}
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+}
+.tab-panel {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+.tab-panel.active { display: block; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Cards */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.card-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title .icon {
+  color: var(--accent);
+  font-size: 18px;
+}
+
+/* Stat cards row */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+.stat-card .stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.stat-card .stat-value {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text);
+}
+.stat-card .stat-value.accent { color: var(--accent); }
+.stat-card .stat-value.green { color: var(--green); }
+.stat-card .stat-value.red { color: var(--red); }
+.stat-card .stat-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Form dots (recent form) */
+.form-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.form-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.form-dot.W { background: var(--green-dim); color: var(--green); border: 1px solid rgba(52, 211, 153, 0.3); }
+.form-dot.L { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248, 113, 113, 0.3); }
+.form-dot.T { background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(251, 191, 36, 0.3); }
+
+/* Tables */
+.table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+thead th {
+  background: var(--bg-elevated);
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'IBM Plex Mono', monospace;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+thead th.sortable { cursor: pointer; user-select: none; }
+thead th.sortable:hover { color: var(--accent); }
+thead th.sorted { color: var(--accent); }
+thead th .sort-arrow { margin-left: 4px; font-size: 10px; }
+tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tbody tr { transition: background 0.15s; }
+tbody tr:hover { background: var(--card-hover); }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr.clickable { cursor: pointer; }
+tbody tr.eagles-row { background: rgba(56, 189, 248, 0.04); }
+tbody tr.eagles-row:hover { background: rgba(56, 189, 248, 0.08); }
+
+/* Result badges */
+.result-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 22px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.result-badge.W { background: var(--green-dim); color: var(--green); }
+.result-badge.L { background: var(--red-dim); color: var(--red); }
+.result-badge.T { background: var(--yellow-dim); color: var(--yellow); }
+
+.game-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.game-type-badge.LG { background: var(--accent-dim); color: var(--accent); }
+.game-type-badge.PO { background: var(--purple-dim); color: var(--purple); }
+
+/* Selects / Dropdowns */
+.filter-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.filter-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+select, .search-input {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  min-width: 200px;
+}
+select:focus, .search-input:focus { border-color: var(--accent); }
+select option { background: var(--card); color: var(--text); }
+
+/* Gamesheet viewer */
+.gamesheet {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 768px) {
+  .gamesheet { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+.gamesheet-header {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.gamesheet-header .score-display {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 48px;
+  font-weight: 700;
+  margin: 12px 0;
+}
+.gamesheet-header .score-display .score-sep { color: var(--text-dim); margin: 0 16px; }
+.gamesheet-header .teams-display {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.gamesheet-header .team-name { min-width: 200px; }
+.gamesheet-header .team-name.home { text-align: right; }
+.gamesheet-header .team-name.visitor { text-align: left; }
+.gamesheet-header .team-name.eagles { color: var(--accent); }
+.gamesheet-header .game-meta {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.gamesheet-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.gamesheet-section h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.scoring-full {
+  grid-column: 1 / -1;
+}
+
+/* Scouting cards */
+.scouting-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 16px;
+}
+.scouting-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.scouting-card h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.scouting-card .record {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: 'IBM Plex Mono', monospace;
+  margin-bottom: 12px;
+}
+.threat-list {
+  list-style: none;
+  padding: 0;
+}
+.threat-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.threat-list li:last-child { border-bottom: none; }
+.threat-list .player-num {
+  color: var(--text-dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  margin-right: 8px;
+}
+.threat-list .stat-pill {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.threat-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'IBM Plex Mono', monospace;
+  margin: 12px 0 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.threat-section-title:first-of-type { border-top: none; margin-top: 0; }
+
+/* Analytics section */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .analytics-grid { grid-template-columns: 1fr; }
+}
+.analytics-grid .card.full-width { grid-column: 1 / -1; }
+
+/* Bar chart */
+.bar-chart { display: flex; flex-direction: column; gap: 8px; }
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bar-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 60px;
+  text-align: right;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.bar-track {
+  flex: 1;
+  height: 24px;
+  background: var(--bg-elevated);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'IBM Plex Mono', monospace;
+  color: rgba(255,255,255,0.9);
+  min-width: fit-content;
+}
+.bar-fill.accent { background: linear-gradient(90deg, var(--accent), #60a5fa); }
+.bar-fill.green { background: linear-gradient(90deg, var(--green), #6ee7b7); }
+.bar-fill.red { background: linear-gradient(90deg, var(--red), #fca5a5); }
+.bar-fill.yellow { background: linear-gradient(90deg, var(--yellow), #fde68a); }
+.bar-fill.purple { background: linear-gradient(90deg, var(--purple), #c4b5fd); }
+
+/* H2H grid */
+.h2h-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.h2h-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+.h2h-card .opponent {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+.h2h-card .h2h-record {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.h2h-card .h2h-record span { margin-right: 12px; }
+.h2h-card .h2h-record .w { color: var(--green); }
+.h2h-card .h2h-record .l { color: var(--red); }
+.h2h-card .h2h-record .t { color: var(--yellow); }
+.h2h-card .h2h-goals {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1000;
+  overflow-y: auto;
+  padding: 40px 20px;
+  animation: fadeIn 0.2s ease;
+}
+.modal-overlay.active { display: block; }
+.modal-content {
+  max-width: 1100px;
+  margin: 0 auto;
+  position: relative;
+}
+.modal-close {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  transition: background 0.2s;
+}
+.modal-close:hover { background: var(--card-hover); }
+
+/* Roster mini table */
+.roster-mini { font-size: 12px; }
+.roster-mini .player-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(26, 39, 68, 0.5);
+}
+.roster-mini .player-row:last-child { border-bottom: none; }
+.roster-mini .player-num {
+  color: var(--text-dim);
+  font-family: 'IBM Plex Mono', monospace;
+  width: 30px;
+}
+.roster-mini .player-name { flex: 1; }
+.roster-mini .player-pos {
+  color: var(--accent);
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+  width: 24px;
+  text-align: right;
+}
+
+/* Scoring timeline */
+.scoring-timeline { list-style: none; }
+.scoring-timeline li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.scoring-timeline li:last-child { border-bottom: none; }
+.scoring-timeline .period-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 2px 6px;
+  border-radius: 4px;
+  min-width: 24px;
+  text-align: center;
+}
+.scoring-timeline .time {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  min-width: 44px;
+}
+.scoring-timeline .scorer { font-weight: 600; }
+.scoring-timeline .assists { color: var(--text-muted); font-size: 12px; }
+.scoring-timeline .team-indicator {
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: auto;
+}
+.scoring-timeline .team-indicator.home { background: rgba(167,139,250,0.15); color: var(--purple); }
+.scoring-timeline .team-indicator.visitor { background: var(--accent-dim); color: var(--accent); }
+
+/* Penalty list */
+.penalty-list { list-style: none; }
+.penalty-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.penalty-list li:last-child { border-bottom: none; }
+.penalty-list .pen-period {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--yellow);
+  background: var(--yellow-dim);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.penalty-list .pen-code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--red);
+  font-weight: 600;
+  min-width: 50px;
+}
+.penalty-list .pen-min {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* Loading */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: var(--text-muted);
+}
+.loading-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .hero h1 { font-size: 26px; }
+  .stat-card .stat-value { font-size: 24px; }
+  .tabs { gap: 0; }
+  .tab-btn { padding: 10px 12px; font-size: 12px; }
+  .scouting-grid { grid-template-columns: 1fr; }
+}
+
+/* Period breakdown bars */
+.period-breakdown {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  justify-content: center;
+  height: 140px;
+  padding-top: 20px;
+}
+.period-bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.period-bar-pair {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  height: 100px;
+}
+.period-bar {
+  width: 28px;
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  transition: height 0.6s ease;
+  min-height: 2px;
+}
+.period-bar.gf { background: linear-gradient(180deg, var(--accent), rgba(56, 189, 248, 0.4)); }
+.period-bar.ga { background: linear-gradient(180deg, var(--red), rgba(248, 113, 113, 0.4)); }
+.period-bar .bar-val {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+}
+.period-bar.gf .bar-val { color: var(--accent); }
+.period-bar.ga .bar-val { color: var(--red); }
+.period-bar-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+}
+
+.legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 2px;
+}
+.legend-dot.gf { background: var(--accent); }
+.legend-dot.ga { background: var(--red); }
+
+/* No data message */
+.no-data {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+footer {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  border-top: 1px solid var(--border);
+  margin-top: 40px;
+}
+</style>
+</head>
+<body>
+<div class="dashboard-root">
+  <div class="hero">
+    <div class="hero-badge"><span class="hero-badge-dot"></span> GTHL / OHF</div>
+    <h1>Toronto Eagles Dashboard</h1>
+    <p id="hero-sub">Under 10 AA — 2025-2026 Season</p>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab-btn active" data-tab="overview">Season Overview</button>
+    <button class="tab-btn" data-tab="gameviewer">Game Viewer</button>
+    <button class="tab-btn" data-tab="rosters">Rosters</button>
+    <button class="tab-btn" data-tab="playerstats">Player Stats</button>
+    <button class="tab-btn" data-tab="scouting">Scouting Report</button>
+    <button class="tab-btn" data-tab="analytics">Advanced Analytics</button>
+  </div>
+
+  <div id="content">
+    <div class="loading">
+      <div class="loading-spinner"></div>
+      Loading gamesheet data...
+    </div>
+  </div>
+
+  <footer>Toronto Eagles Gamesheet Dashboard</footer>
+</div>
+
+<div class="modal-overlay" id="modal">
+  <button class="modal-close" id="modal-close">&times;</button>
+  <div class="modal-content" id="modal-body"></div>
+</div>
+
+<script>
+const TEAM = 'Toronto Eagles';
+let DATA = null;
+let allGames = [];
+
+// Penalty code names
+const PENALTY_NAMES = {
+  'BC': 'Body Contact', 'BDG': 'Boarding', 'BM': 'Bench Minor', 'CC': 'Cross-Checking',
+  'CFB': 'Contact from Behind', 'HC': 'Head Contact', 'HKG': 'Hooking', 'HO': 'Holding',
+  'HTS': 'High-Sticking', 'INT': 'Interference', 'INTGT': 'Interference on Goaltender',
+  'PS': 'Penalty Shot', 'RO': 'Roughing', 'SL': 'Slashing', 'SP': 'Spearing',
+  'TMP': 'Too Many Players', 'TR': 'Tripping', 'USC': 'Unsportsmanlike Conduct',
+  '7.5(a)': 'Delay of Game', '9.4(c)': 'Head Contact (9.4c)',
+  '11.1(d)i': 'Striking (11.1d)', '11.4': 'Body Checking'
+};
+
+function toTitleCase(str) {
+  return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
+function getEaglesSide(game) {
+  if (game.homeTeam === TEAM) return 'home';
+  if (game.visitorTeam === TEAM) return 'visitor';
+  return null;
+}
+
+function getResult(game) {
+  const side = getEaglesSide(game);
+  if (!side) return null;
+  const our = side === 'home' ? game.homeScore : game.visitorScore;
+  const their = side === 'home' ? game.visitorScore : game.homeScore;
+  if (our > their) return 'W';
+  if (our < their) return 'L';
+  return 'T';
+}
+
+function getOpponent(game) {
+  return game.homeTeam === TEAM ? game.visitorTeam : game.homeTeam;
+}
+
+function getLocation(game) {
+  return game.homeTeam === TEAM ? 'Home' : 'Away';
+}
+
+function getEaglesScore(game) {
+  const side = getEaglesSide(game);
+  return side === 'home' ? `${game.homeScore} - ${game.visitorScore}` : `${game.visitorScore} - ${game.homeScore}`;
+}
+
+function formatDate(isoDate) {
+  const d = new Date(isoDate + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Tab management
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    const panel = document.getElementById('tab-' + btn.dataset.tab);
+    if (panel) panel.classList.add('active');
+  });
+});
+
+// Modal
+function openModal(html) {
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('active');
+  document.body.style.overflow = '';
+}
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// Build all player stats across all games
+function buildPlayerStats(games) {
+  const players = {};
+  games.forEach(game => {
+    ['home', 'visitor'].forEach(side => {
+      const teamName = side === 'home' ? game.homeTeam : game.visitorTeam;
+      const sideData = game[side];
+      // Track roster appearances
+      sideData.roster.forEach(p => {
+        if (p.status !== 'active') return;
+        const key = `${teamName}|${p.name}`;
+        if (!players[key]) {
+          players[key] = { name: p.name, team: teamName, number: p.number, position: p.position, gp: 0, g: 0, a: 0, pts: 0, pim: 0, gameGoals: {} };
+        }
+        players[key].gp++;
+        if (p.number && p.number !== players[key].number) {
+          // Use most recent number
+          players[key].number = p.number;
+        }
+        if (p.position === 'G') players[key].position = 'G';
+      });
+      // Track goals
+      sideData.scoring.forEach(s => {
+        const scorerKey = `${teamName}|${s.goalScorer}`;
+        if (players[scorerKey]) {
+          players[scorerKey].g++;
+          players[scorerKey].pts++;
+          if (!players[scorerKey].gameGoals[game.isoDate]) players[scorerKey].gameGoals[game.isoDate] = 0;
+          players[scorerKey].gameGoals[game.isoDate]++;
+        }
+        if (s.assist1) {
+          const a1Key = `${teamName}|${s.assist1}`;
+          if (players[a1Key]) { players[a1Key].a++; players[a1Key].pts++; }
+        }
+        if (s.assist2) {
+          const a2Key = `${teamName}|${s.assist2}`;
+          if (players[a2Key]) { players[a2Key].a++; players[a2Key].pts++; }
+        }
+      });
+      // Track PIM
+      sideData.penalties.forEach(p => {
+        const penKey = `${teamName}|${p.player}`;
+        if (players[penKey]) {
+          players[penKey].pim += p.minutes;
+        }
+      });
+    });
+  });
+  return Object.values(players);
+}
+
+function renderGamesheet(game) {
+  const homeSide = game.home;
+  const visSide = game.visitor;
+
+  const renderRoster = (roster) => {
+    const goalies = roster.filter(p => p.position === 'G' && p.status === 'active');
+    const skaters = roster.filter(p => p.position !== 'G' && p.status === 'active');
+    const scratches = roster.filter(p => p.status === 'inactive');
+    let html = '';
+    goalies.forEach(p => {
+      html += `<div class="player-row"><span class="player-num">#${p.number}</span><span class="player-name">${toTitleCase(p.name)}</span><span class="player-pos">G</span></div>`;
+    });
+    skaters.sort((a,b) => a.number - b.number).forEach(p => {
+      html += `<div class="player-row"><span class="player-num">#${p.number}</span><span class="player-name">${toTitleCase(p.name)}</span><span class="player-pos"></span></div>`;
+    });
+    if (scratches.length) {
+      html += `<div style="margin-top:8px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;font-family:'IBM Plex Mono',monospace;">Scratches</div>`;
+      scratches.forEach(p => {
+        html += `<div class="player-row" style="opacity:0.5"><span class="player-num">#${p.number}</span><span class="player-name">${toTitleCase(p.name)}</span><span class="player-pos">${p.position === 'G' ? 'G' : ''}</span></div>`;
+      });
+    }
+    return html;
+  };
+
+  const renderOfficials = (officials) => {
+    return officials.map(o => {
+      const roleLabel = o.role === 'CO' ? 'Head Coach' : o.role === 'AC' ? 'Asst. Coach' : o.role === 'TR' ? 'Trainer' : o.role === 'MG' ? 'Manager' : o.role;
+      return `<div class="player-row"><span class="player-num" style="width:80px">${roleLabel}</span><span class="player-name">${toTitleCase(o.name)}</span></div>`;
+    }).join('');
+  };
+
+  // Build combined scoring timeline
+  const allGoals = [];
+  homeSide.scoring.forEach(s => allGoals.push({ ...s, side: 'home', team: game.homeTeam }));
+  visSide.scoring.forEach(s => allGoals.push({ ...s, side: 'visitor', team: game.visitorTeam }));
+  allGoals.sort((a, b) => {
+    if (a.period !== b.period) return a.period - b.period;
+    // Time counts down, so higher time = earlier in period
+    return parseFloat(b.time.replace(':', '.')) - parseFloat(a.time.replace(':', '.'));
+  });
+
+  let scoringHtml = '';
+  if (allGoals.length === 0) {
+    scoringHtml = '<div class="no-data">No goals scored</div>';
+  } else {
+    scoringHtml = '<ul class="scoring-timeline">';
+    let runHome = 0, runVis = 0;
+    allGoals.forEach(g => {
+      if (g.side === 'home') runHome++; else runVis++;
+      const assists = [g.assist1, g.assist2].filter(Boolean).map(a => toTitleCase(a)).join(', ');
+      const goalType = g.type ? ` <span style="color:var(--yellow);font-size:11px;font-family:'IBM Plex Mono',monospace">(${g.type})</span>` : '';
+      scoringHtml += `<li>
+        <span class="period-badge">P${g.period}</span>
+        <span class="time">${g.time}</span>
+        <div>
+          <span class="scorer">#${g.goalScorerNumber} ${toTitleCase(g.goalScorer)}</span>${goalType}<br/>
+          <span class="assists">${assists ? 'Assists: ' + assists : 'Unassisted'}</span>
+        </div>
+        <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim)">${runHome}-${runVis}</span>
+        <span class="team-indicator ${g.side}">${g.side === 'home' ? 'HOME' : 'VIS'}</span>
+      </li>`;
+    });
+    scoringHtml += '</ul>';
+  }
+
+  // Penalties
+  const renderPenalties = (penalties, teamName) => {
+    if (!penalties.length) return '<div class="no-data" style="padding:12px">No penalties</div>';
+    return '<ul class="penalty-list">' + penalties.map(p =>
+      `<li>
+        <span class="pen-period">P${p.period}</span>
+        <span class="pen-code">${p.code}</span>
+        <span style="flex:1">#${p.number} ${toTitleCase(p.player)}</span>
+        <span class="pen-min">${p.minutes} min</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-dim)">${p.startTime}-${p.endTime}</span>
+      </li>`
+    ).join('') + '</ul>';
+  };
+
+  const homeIsEagles = game.homeTeam === TEAM;
+  const homeClass = homeIsEagles ? ' eagles' : '';
+  const visClass = !homeIsEagles && game.visitorTeam === TEAM ? ' eagles' : '';
+
+  return `
+    <div class="gamesheet">
+      <div class="gamesheet-header">
+        <div class="game-meta">${formatDate(game.isoDate)} &mdash; ${game.arena} &mdash; <span class="game-type-badge ${game.gameType}">${game.gameType === 'PO' ? 'PLAYOFF' : 'LEAGUE'}</span></div>
+        <div class="teams-display">
+          <span class="team-name home${homeClass}">${game.homeTeam}</span>
+          <span class="score-display">${game.homeScore}<span class="score-sep">-</span>${game.visitorScore}</span>
+          <span class="team-name visitor${visClass}">${game.visitorTeam}</span>
+        </div>
+        <div class="game-meta">Referee: ${game.referee || 'N/A'}${game.linesman ? ' | Linesman: ' + game.linesman : ''} | Periods: ${game.periodLengths}</div>
+      </div>
+
+      <div class="gamesheet-section">
+        <h3>${game.homeTeam} — Roster (Home)</h3>
+        <div class="roster-mini">${renderRoster(homeSide.roster)}</div>
+        <h3 style="margin-top:16px">Coaching Staff</h3>
+        <div class="roster-mini">${renderOfficials(homeSide.officials)}</div>
+      </div>
+
+      <div class="gamesheet-section">
+        <h3>${game.visitorTeam} — Roster (Visitor)</h3>
+        <div class="roster-mini">${renderRoster(visSide.roster)}</div>
+        <h3 style="margin-top:16px">Coaching Staff</h3>
+        <div class="roster-mini">${renderOfficials(visSide.officials)}</div>
+      </div>
+
+      <div class="gamesheet-section scoring-full">
+        <h3>Scoring Summary</h3>
+        ${scoringHtml}
+      </div>
+
+      <div class="gamesheet-section">
+        <h3>${game.homeTeam} — Penalties</h3>
+        ${renderPenalties(homeSide.penalties, game.homeTeam)}
+      </div>
+
+      <div class="gamesheet-section">
+        <h3>${game.visitorTeam} — Penalties</h3>
+        ${renderPenalties(visSide.penalties, game.visitorTeam)}
+      </div>
+    </div>
+  `;
+}
+
+// Tab 1: Season Overview
+function renderOverview(games) {
+  const eaglesGames = games.filter(g => g.homeTeam === TEAM || g.visitorTeam === TEAM);
+  let wins = 0, losses = 0, ties = 0, gf = 0, ga = 0;
+  eaglesGames.forEach(g => {
+    const r = getResult(g);
+    if (r === 'W') wins++;
+    else if (r === 'L') losses++;
+    else ties++;
+    const side = getEaglesSide(g);
+    gf += side === 'home' ? g.homeScore : g.visitorScore;
+    ga += side === 'home' ? g.visitorScore : g.homeScore;
+  });
+  const diff = gf - ga;
+  const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
+  const diffClass = diff > 0 ? 'green' : diff < 0 ? 'red' : 'accent';
+
+  // Separate LG and PO
+  const lgGames = eaglesGames.filter(g => g.gameType === 'LG');
+  const poGames = eaglesGames.filter(g => g.gameType === 'PO');
+  let lgW = 0, lgL = 0, lgT = 0, poW = 0, poL = 0, poT = 0;
+  lgGames.forEach(g => { const r = getResult(g); if (r === 'W') lgW++; else if (r === 'L') lgL++; else lgT++; });
+  poGames.forEach(g => { const r = getResult(g); if (r === 'W') poW++; else if (r === 'L') poL++; else poT++; });
+
+  // Recent form (last 10)
+  const recent = eaglesGames.slice(-10);
+  const formDots = recent.map(g => {
+    const r = getResult(g);
+    return `<div class="form-dot ${r}" title="${formatDate(g.isoDate)} vs ${getOpponent(g)}">${r}</div>`;
+  }).join('');
+
+  // Win streak / current streak
+  let streak = 0;
+  let streakType = '';
+  for (let i = eaglesGames.length - 1; i >= 0; i--) {
+    const r = getResult(eaglesGames[i]);
+    if (streakType === '') streakType = r;
+    if (r === streakType) streak++;
+    else break;
+  }
+
+  // Game log table
+  let tableRows = '';
+  eaglesGames.forEach((g, idx) => {
+    const r = getResult(g);
+    const opp = getOpponent(g);
+    const loc = getLocation(g);
+    const score = getEaglesScore(g);
+    tableRows += `<tr class="clickable" data-game-idx="${games.indexOf(g)}">
+      <td>${formatDate(g.isoDate)}</td>
+      <td>${opp}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-weight:600">${score}</td>
+      <td><span class="result-badge ${r}">${r}</span></td>
+      <td>${loc}</td>
+      <td><span class="game-type-badge ${g.gameType}">${g.gameType}</span></td>
+      <td style="font-size:12px;color:var(--text-dim)">${g.arena}</td>
+    </tr>`;
+  });
+
+  return `
+    <div class="tab-panel active" id="tab-overview">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Record</div>
+          <div class="stat-value accent">${wins}-${losses}-${ties}</div>
+          <div class="stat-sub">${eaglesGames.length} games played</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Goals For</div>
+          <div class="stat-value green">${gf}</div>
+          <div class="stat-sub">${(gf / eaglesGames.length).toFixed(1)} per game</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Goals Against</div>
+          <div class="stat-value red">${ga}</div>
+          <div class="stat-sub">${(ga / eaglesGames.length).toFixed(1)} per game</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Goal Diff</div>
+          <div class="stat-value ${diffClass}">${diffStr}</div>
+          <div class="stat-sub">GF ${gf} / GA ${ga}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Current Streak</div>
+          <div class="stat-value ${streakType === 'W' ? 'green' : streakType === 'L' ? 'red' : 'accent'}">${streak}${streakType}</div>
+          <div class="stat-sub">${streakType === 'W' ? 'Wins' : streakType === 'L' ? 'Losses' : 'Ties'} in a row</div>
+        </div>
+      </div>
+
+      ${poGames.length ? `
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">League Record</div>
+          <div class="stat-value accent">${lgW}-${lgL}-${lgT}</div>
+          <div class="stat-sub">${lgGames.length} league games</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Playoff Record</div>
+          <div class="stat-value" style="color:var(--purple)">${poW}-${poL}-${poT}</div>
+          <div class="stat-sub">${poGames.length} playoff games</div>
+        </div>
+      </div>` : ''}
+
+      <div class="card" style="text-align:center">
+        <div class="card-title" style="justify-content:center">Recent Form (Last 10)</div>
+        <div class="form-dots">${formDots}</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Game Log</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Opponent</th>
+                <th>Score</th>
+                <th>Result</th>
+                <th>Location</th>
+                <th>Type</th>
+                <th>Arena</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Tab 2: Game Viewer
+function renderGameViewer(games) {
+  const options = games.map((g, i) => {
+    const homeAway = g.homeTeam === TEAM ? '(Home)' : g.visitorTeam === TEAM ? '(Away)' : '';
+    return `<option value="${i}">${formatDate(g.isoDate)} — ${g.homeTeam} ${g.homeScore}-${g.visitorScore} ${g.visitorTeam} ${homeAway} [${g.gameType}]</option>`;
+  }).join('');
+
+  return `
+    <div class="tab-panel" id="tab-gameviewer">
+      <div class="filter-row">
+        <span class="filter-label">Select Game</span>
+        <select id="game-select">${options}</select>
+      </div>
+      <div id="gamesheet-container">${renderGamesheet(games[0])}</div>
+    </div>
+  `;
+}
+
+// Tab 3: Rosters
+function renderRosters(games) {
+  // Get all teams
+  const teams = new Set();
+  games.forEach(g => { teams.add(g.homeTeam); teams.add(g.visitorTeam); });
+  const sortedTeams = [...teams].sort();
+
+  const teamOptions = sortedTeams.map(t =>
+    `<option value="${t}" ${t === TEAM ? 'selected' : ''}>${t}</option>`
+  ).join('');
+
+  return `
+    <div class="tab-panel" id="tab-rosters">
+      <div class="filter-row">
+        <span class="filter-label">Team</span>
+        <select id="roster-team-select">${teamOptions}</select>
+      </div>
+      <div id="roster-container"></div>
+    </div>
+  `;
+}
+
+function renderRosterForTeam(games, teamName) {
+  const players = {};
+  const staff = {};
+  const teamGames = games.filter(g => g.homeTeam === teamName || g.visitorTeam === teamName);
+
+  teamGames.forEach(g => {
+    const side = g.homeTeam === teamName ? 'home' : 'visitor';
+    const sideData = g[side];
+    sideData.roster.forEach(p => {
+      if (p.status !== 'active') return;
+      const key = p.name;
+      if (!players[key]) {
+        players[key] = { name: p.name, number: p.number, position: p.position, gp: 0 };
+      }
+      players[key].gp++;
+      if (p.number) players[key].number = p.number;
+      if (p.position === 'G') players[key].position = 'G';
+    });
+    sideData.officials.forEach(o => {
+      const key = o.name;
+      if (!staff[key]) staff[key] = { name: o.name, role: o.role, gp: 0 };
+      staff[key].gp++;
+    });
+  });
+
+  const playerList = Object.values(players).sort((a, b) => {
+    if (a.position === 'G' && b.position !== 'G') return -1;
+    if (a.position !== 'G' && b.position === 'G') return 1;
+    return a.number - b.number;
+  });
+
+  const staffList = Object.values(staff).sort((a, b) => {
+    const order = { CO: 0, AC: 1, TR: 2, MG: 3 };
+    return (order[a.role] || 9) - (order[b.role] || 9);
+  });
+
+  let tableRows = playerList.map(p => `
+    <tr>
+      <td style="font-family:'IBM Plex Mono',monospace;font-weight:600">${p.number || '-'}</td>
+      <td>${toTitleCase(p.name)}</td>
+      <td>${p.position === 'G' ? '<span style="color:var(--accent);font-weight:600">G</span>' : 'Skater'}</td>
+      <td style="font-family:'IBM Plex Mono',monospace">${p.gp}</td>
+    </tr>
+  `).join('');
+
+  const roleLabels = { CO: 'Head Coach', AC: 'Asst. Coach', TR: 'Trainer', MG: 'Manager' };
+  let staffRows = staffList.map(s => `
+    <tr>
+      <td>${roleLabels[s.role] || s.role}</td>
+      <td>${toTitleCase(s.name)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace">${s.gp}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <div class="card">
+      <div class="card-title">${teamName} — Player Roster (${playerList.length} players across ${teamGames.length} games)</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Player</th><th>Position</th><th>GP</th></tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">${teamName} — Coaching Staff</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Role</th><th>Name</th><th>Games</th></tr></thead>
+          <tbody>${staffRows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// Tab 4: Player Stats
+function renderPlayerStats(games) {
+  const teams = new Set();
+  games.forEach(g => { teams.add(g.homeTeam); teams.add(g.visitorTeam); });
+  const sortedTeams = ['All Teams', 'Non Eagles', ...[...teams].sort()];
+  const teamOptions = sortedTeams.map(t => `<option value="${t}">${t}</option>`).join('');
+
+  return `
+    <div class="tab-panel" id="tab-playerstats">
+      <div class="filter-row">
+        <span class="filter-label">Team</span>
+        <select id="stats-team-filter">${teamOptions}</select>
+        <input type="text" class="search-input" id="stats-search" placeholder="Search player..." style="min-width:180px" />
+      </div>
+      <div id="stats-table-container"></div>
+    </div>
+  `;
+}
+
+let statsSortCol = 'pts';
+let statsSortDir = -1; // -1 = desc
+const statsColumns = [
+  { key: 'name', label: 'Player', sortable: true },
+  { key: 'team', label: 'Team', sortable: true },
+  { key: 'number', label: '#', sortable: true },
+  { key: 'position', label: 'Pos', sortable: true },
+  { key: 'gp', label: 'GP', sortable: true },
+  { key: 'g', label: 'G', sortable: true },
+  { key: 'a', label: 'A', sortable: true },
+  { key: 'pts', label: 'PTS', sortable: true },
+  { key: 'ppg', label: 'PPG', sortable: true },
+  { key: 'pim', label: 'PIM', sortable: true },
+];
+
+function renderStatsTable(allStats, teamFilter, searchTerm) {
+  let filtered = allStats;
+  if (teamFilter === 'Non Eagles') {
+    filtered = filtered.filter(p => p.team !== 'Toronto Eagles');
+  } else if (teamFilter && teamFilter !== 'All Teams') {
+    filtered = filtered.filter(p => p.team === teamFilter);
+  }
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase();
+    filtered = filtered.filter(p => p.name.toLowerCase().includes(term));
+  }
+
+  // Filter out goalies from scoring stats? No, keep them — goalies can get assists
+  // Add PPG
+  filtered = filtered.map(p => ({ ...p, ppg: p.gp > 0 ? (p.pts / p.gp) : 0 }));
+
+  // Sort
+  filtered.sort((a, b) => {
+    let va = a[statsSortCol], vb = b[statsSortCol];
+    if (statsSortCol === 'name' || statsSortCol === 'team' || statsSortCol === 'position') {
+      va = (va || '').toLowerCase();
+      vb = (vb || '').toLowerCase();
+      return statsSortDir * va.localeCompare(vb);
+    }
+    return statsSortDir * ((va || 0) - (vb || 0));
+  });
+
+  const ths = statsColumns.map(c => {
+    const sorted = statsSortCol === c.key;
+    const arrow = sorted ? (statsSortDir === -1 ? ' &#9660;' : ' &#9650;') : '';
+    return `<th class="sortable ${sorted ? 'sorted' : ''}" data-col="${c.key}">${c.label}${arrow ? `<span class="sort-arrow">${arrow}</span>` : ''}</th>`;
+  }).join('');
+
+  const rows = filtered.map(p => {
+    const isEagles = p.team === TEAM;
+    return `<tr class="${isEagles ? 'eagles-row' : ''}">
+      <td style="font-weight:600">${toTitleCase(p.name)}</td>
+      <td>${p.team}${isEagles ? ' <span style="color:var(--accent);font-size:10px">&#9733;</span>' : ''}</td>
+      <td style="font-family:'IBM Plex Mono',monospace">${p.number || '-'}</td>
+      <td>${p.position === 'G' ? '<span style="color:var(--accent)">G</span>' : ''}</td>
+      <td style="font-family:'IBM Plex Mono',monospace">${p.gp}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-weight:600">${p.g}</td>
+      <td style="font-family:'IBM Plex Mono',monospace">${p.a}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--accent)">${p.pts}</td>
+      <td style="font-family:'IBM Plex Mono',monospace">${p.ppg.toFixed(2)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;${p.pim > 0 ? 'color:var(--yellow)' : ''}">${p.pim}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="card">
+      <div class="card-title">Player Statistics (${filtered.length} players)</div>
+      <div class="table-wrap" style="max-height:600px;overflow-y:auto">
+        <table>
+          <thead><tr>${ths}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// Tab 5: Scouting Report
+function renderScouting(games) {
+  const allStats = buildPlayerStats(games);
+  const eaglesGames = games.filter(g => g.homeTeam === TEAM || g.visitorTeam === TEAM);
+
+  // Get opposing teams
+  const opponents = new Set();
+  eaglesGames.forEach(g => opponents.add(getOpponent(g)));
+  const sortedOpponents = [...opponents].sort();
+
+  let html = '<div class="tab-panel" id="tab-scouting"><div class="scouting-grid">';
+
+  sortedOpponents.forEach(opp => {
+    // Games vs this opponent
+    const vsGames = eaglesGames.filter(g => getOpponent(g) === opp);
+    let w = 0, l = 0, t = 0;
+    vsGames.forEach(g => { const r = getResult(g); if (r === 'W') w++; else if (r === 'L') l++; else t++; });
+
+    // Get opponent players
+    const oppPlayers = allStats.filter(p => p.team === opp && p.position !== 'G');
+    const oppGoalies = allStats.filter(p => p.team === opp && p.position === 'G');
+
+    // Top scorers
+    const topScorers = [...oppPlayers].sort((a, b) => b.pts - a.pts || b.g - a.g).slice(0, 5);
+
+    // Hot players: multi-point games or scored in recent games
+    const recentGames = vsGames.slice(-3);
+    const recentScorers = new Set();
+    recentGames.forEach(g => {
+      const side = g.homeTeam === opp ? 'home' : 'visitor';
+      g[side].scoring.forEach(s => {
+        recentScorers.add(s.goalScorer);
+        if (s.assist1) recentScorers.add(s.assist1);
+        if (s.assist2) recentScorers.add(s.assist2);
+      });
+    });
+
+    // Players with multi-point games
+    const multiPointPlayers = oppPlayers.filter(p => {
+      return Object.values(p.gameGoals).some(gCount => gCount >= 2);
+    });
+
+    const hotPlayers = oppPlayers.filter(p => recentScorers.has(p.name) || multiPointPlayers.includes(p));
+    const uniqueHot = [...new Set(hotPlayers.map(p => p.name))].map(name => hotPlayers.find(p => p.name === name)).slice(0, 4);
+
+    html += `
+      <div class="scouting-card">
+        <h3>${opp}</h3>
+        <div class="record">Record vs Eagles: <span style="color:${w > l ? 'var(--red)' : w < l ? 'var(--green)' : 'var(--yellow)'}">${w}W-${l}L-${t}T</span> (${vsGames.length} GP)</div>
+
+        <div class="threat-section-title">Goalies</div>
+        <ul class="threat-list">
+          ${oppGoalies.length ? oppGoalies.map(g => `
+            <li>
+              <span><span class="player-num">#${g.number}</span>${toTitleCase(g.name)}</span>
+              <span class="stat-pill">${g.gp} GP</span>
+            </li>
+          `).join('') : '<li style="color:var(--text-dim)">No goalie data</li>'}
+        </ul>
+
+        <div class="threat-section-title">Top Scorers</div>
+        <ul class="threat-list">
+          ${topScorers.map(p => `
+            <li>
+              <span><span class="player-num">#${p.number}</span>${toTitleCase(p.name)}</span>
+              <span class="stat-pill">${p.g}G ${p.a}A = ${p.pts}P</span>
+            </li>
+          `).join('')}
+          ${topScorers.length === 0 ? '<li style="color:var(--text-dim)">No scoring data</li>' : ''}
+        </ul>
+
+        ${uniqueHot.length ? `
+          <div class="threat-section-title">Hot / Multi-Point Players</div>
+          <ul class="threat-list">
+            ${uniqueHot.map(p => `
+              <li>
+                <span><span class="player-num">#${p.number}</span>${toTitleCase(p.name)}</span>
+                <span class="stat-pill" style="background:var(--red-dim);color:var(--red)">${p.g}G ${p.a}A</span>
+              </li>
+            `).join('')}
+          </ul>
+        ` : ''}
+      </div>
+    `;
+  });
+
+  html += '</div></div>';
+  return html;
+}
+
+// Tab 6: Advanced Analytics
+function renderAnalytics(games) {
+  const eaglesGames = games.filter(g => g.homeTeam === TEAM || g.visitorTeam === TEAM);
+
+  // 1. Standings
+  const teamStats = {};
+  games.forEach(g => {
+    [g.homeTeam, g.visitorTeam].forEach(t => {
+      if (!teamStats[t]) teamStats[t] = { w: 0, l: 0, t: 0, gf: 0, ga: 0, pts: 0, gp: 0 };
+    });
+    const homeWin = g.homeScore > g.visitorScore;
+    const tie = g.homeScore === g.visitorScore;
+    teamStats[g.homeTeam].gp++;
+    teamStats[g.visitorTeam].gp++;
+    teamStats[g.homeTeam].gf += g.homeScore;
+    teamStats[g.homeTeam].ga += g.visitorScore;
+    teamStats[g.visitorTeam].gf += g.visitorScore;
+    teamStats[g.visitorTeam].ga += g.homeScore;
+    if (homeWin) {
+      teamStats[g.homeTeam].w++;
+      teamStats[g.homeTeam].pts += 2;
+      teamStats[g.visitorTeam].l++;
+    } else if (tie) {
+      teamStats[g.homeTeam].t++;
+      teamStats[g.homeTeam].pts += 1;
+      teamStats[g.visitorTeam].t++;
+      teamStats[g.visitorTeam].pts += 1;
+    } else {
+      teamStats[g.visitorTeam].w++;
+      teamStats[g.visitorTeam].pts += 2;
+      teamStats[g.homeTeam].l++;
+    }
+  });
+
+  const standings = Object.entries(teamStats).map(([name, s]) => ({
+    name, ...s, gd: s.gf - s.ga
+  })).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+
+  let standingsRows = standings.map((t, i) => {
+    const isEagles = t.name === TEAM;
+    return `<tr class="${isEagles ? 'eagles-row' : ''}">
+      <td style="font-family:'IBM Plex Mono',monospace">${i + 1}</td>
+      <td style="font-weight:600">${t.name}${isEagles ? ' <span style="color:var(--accent);font-size:10px">&#9733;</span>' : ''}</td>
+      <td style="font-family:'IBM Plex Mono',monospace">${t.gp}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--green)">${t.w}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--red)">${t.l}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:var(--yellow)">${t.t}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--accent)">${t.pts}</td>
+      <td style="font-family:'IBM Plex Mono',monospace">${t.gf}</td>
+      <td style="font-family:'IBM Plex Mono',monospace">${t.ga}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:${t.gd > 0 ? 'var(--green)' : t.gd < 0 ? 'var(--red)' : 'var(--text-dim)'}">${t.gd > 0 ? '+' : ''}${t.gd}</td>
+    </tr>`;
+  }).join('');
+
+  // 2. Penalty analysis (Eagles)
+  const penaltyCounts = {};
+  const penaltyPlayers = {};
+  eaglesGames.forEach(g => {
+    const side = getEaglesSide(g);
+    g[side].penalties.forEach(p => {
+      penaltyCounts[p.code] = (penaltyCounts[p.code] || 0) + 1;
+      const key = p.player;
+      if (!penaltyPlayers[key]) penaltyPlayers[key] = { name: p.name || p.player, pim: 0, count: 0, number: p.number };
+      penaltyPlayers[key].pim += p.minutes;
+      penaltyPlayers[key].count++;
+    });
+  });
+
+  const topPenCodes = Object.entries(penaltyCounts).sort((a, b) => b[1] - a[1]);
+  const maxPenCode = topPenCodes.length ? topPenCodes[0][1] : 1;
+  const penCodeBars = topPenCodes.map(([code, count]) => {
+    const pct = (count / maxPenCode) * 100;
+    const name = PENALTY_NAMES[code] || code;
+    return `<div class="bar-row">
+      <span class="bar-label">${code}</span>
+      <div class="bar-track">
+        <div class="bar-fill yellow" style="width:${pct}%">${count}x ${name}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const topPenPlayers = Object.values(penaltyPlayers).sort((a, b) => b.pim - a.pim).slice(0, 10);
+  const maxPIM = topPenPlayers.length ? topPenPlayers[0].pim : 1;
+  const penPlayerBars = topPenPlayers.map(p => {
+    const pct = (p.pim / maxPIM) * 100;
+    return `<div class="bar-row">
+      <span class="bar-label">#${p.number}</span>
+      <div class="bar-track">
+        <div class="bar-fill red" style="width:${pct}%">${p.pim} PIM — ${toTitleCase(p.name)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 3. Scoring by period (Eagles)
+  const periodGF = { 1: 0, 2: 0, 3: 0 };
+  const periodGA = { 1: 0, 2: 0, 3: 0 };
+  eaglesGames.forEach(g => {
+    const ourSide = getEaglesSide(g);
+    const theirSide = ourSide === 'home' ? 'visitor' : 'home';
+    g[ourSide].scoring.forEach(s => { periodGF[s.period] = (periodGF[s.period] || 0) + 1; });
+    g[theirSide].scoring.forEach(s => { periodGA[s.period] = (periodGA[s.period] || 0) + 1; });
+  });
+  const maxPeriodGoals = Math.max(...Object.values(periodGF), ...Object.values(periodGA), 1);
+
+  const periods = [1, 2, 3];
+  const periodBars = periods.map(p => {
+    const gfH = (periodGF[p] / maxPeriodGoals) * 90;
+    const gaH = (periodGA[p] / maxPeriodGoals) * 90;
+    return `<div class="period-bar-group">
+      <div class="period-bar-pair">
+        <div class="period-bar gf" style="height:${gfH}px"><span class="bar-val">${periodGF[p]}</span></div>
+        <div class="period-bar ga" style="height:${gaH}px"><span class="bar-val">${periodGA[p]}</span></div>
+      </div>
+      <span class="period-bar-label">P${p}</span>
+    </div>`;
+  }).join('');
+
+  // 4. Head-to-head records
+  const opponents = new Set();
+  eaglesGames.forEach(g => opponents.add(getOpponent(g)));
+  let h2hCards = '';
+  [...opponents].sort().forEach(opp => {
+    const vsGames = eaglesGames.filter(g => getOpponent(g) === opp);
+    let w = 0, l = 0, t = 0, gf = 0, ga = 0;
+    vsGames.forEach(g => {
+      const r = getResult(g);
+      if (r === 'W') w++; else if (r === 'L') l++; else t++;
+      const side = getEaglesSide(g);
+      gf += side === 'home' ? g.homeScore : g.visitorScore;
+      ga += side === 'home' ? g.visitorScore : g.homeScore;
+    });
+    h2hCards += `
+      <div class="h2h-card">
+        <div class="opponent">${opp}</div>
+        <div class="h2h-record">
+          <span class="w">${w}W</span>
+          <span class="l">${l}L</span>
+          <span class="t">${t}T</span>
+          <span style="color:var(--text-dim)">(${vsGames.length} GP)</span>
+        </div>
+        <div class="h2h-goals">GF: ${gf} | GA: ${ga} | Diff: ${gf - ga > 0 ? '+' : ''}${gf - ga}</div>
+      </div>
+    `;
+  });
+
+  // 5. League-wide penalty leaders
+  const allStats = buildPlayerStats(games);
+  const leaguePenLeaders = allStats.filter(p => p.pim > 0).sort((a, b) => b.pim - a.pim).slice(0, 10);
+  const maxLeaguePIM = leaguePenLeaders.length ? leaguePenLeaders[0].pim : 1;
+  const leaguePenBars = leaguePenLeaders.map(p => {
+    const pct = (p.pim / maxLeaguePIM) * 100;
+    const isEagles = p.team === TEAM;
+    return `<div class="bar-row">
+      <span class="bar-label" style="${isEagles ? 'color:var(--accent)' : ''}">#${p.number}</span>
+      <div class="bar-track">
+        <div class="bar-fill ${isEagles ? 'accent' : 'red'}" style="width:${pct}%">${p.pim} PIM — ${toTitleCase(p.name)} (${p.team})</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="tab-panel" id="tab-analytics">
+      <div class="analytics-grid">
+        <div class="card full-width">
+          <div class="card-title">League Standings</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>#</th><th>Team</th><th>GP</th><th>W</th><th>L</th><th>T</th><th>PTS</th><th>GF</th><th>GA</th><th>GD</th>
+              </tr></thead>
+              <tbody>${standingsRows}</tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Eagles Scoring by Period</div>
+          <div class="period-breakdown">${periodBars}</div>
+          <div class="legend">
+            <div class="legend-item"><span class="legend-dot gf"></span> Goals For</div>
+            <div class="legend-item"><span class="legend-dot ga"></span> Goals Against</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Eagles Penalty Breakdown</div>
+          <div class="bar-chart">${penCodeBars || '<div class="no-data">No penalties</div>'}</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Eagles Most Penalized Players</div>
+          <div class="bar-chart">${penPlayerBars || '<div class="no-data">No penalties</div>'}</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">League Penalty Leaders</div>
+          <div class="bar-chart">${leaguePenBars || '<div class="no-data">No penalties</div>'}</div>
+        </div>
+
+        <div class="card full-width">
+          <div class="card-title">Head-to-Head Records</div>
+          <div class="h2h-grid">${h2hCards}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Main
+async function init() {
+  try {
+    const resp = await fetch('data/games.json');
+    DATA = await resp.json();
+    allGames = DATA.games;
+
+    // Update hero
+    document.getElementById('hero-sub').textContent = `${DATA.metadata.division} — ${DATA.metadata.season} — ${allGames.length} Games`;
+
+    const allStats = buildPlayerStats(allGames);
+    const content = document.getElementById('content');
+
+    content.innerHTML =
+      renderOverview(allGames) +
+      renderGameViewer(allGames) +
+      renderRosters(allGames) +
+      renderPlayerStats(allGames) +
+      renderScouting(allGames) +
+      renderAnalytics(allGames);
+
+    // Wire up game log clicks
+    content.querySelectorAll('tr.clickable[data-game-idx]').forEach(row => {
+      row.addEventListener('click', () => {
+        const idx = parseInt(row.dataset.gameIdx);
+        openModal(renderGamesheet(allGames[idx]));
+      });
+    });
+
+    // Wire up game viewer select
+    const gameSelect = document.getElementById('game-select');
+    if (gameSelect) {
+      gameSelect.addEventListener('change', () => {
+        document.getElementById('gamesheet-container').innerHTML = renderGamesheet(allGames[parseInt(gameSelect.value)]);
+      });
+    }
+
+    // Wire up roster team select
+    const rosterSelect = document.getElementById('roster-team-select');
+    if (rosterSelect) {
+      const renderSelectedRoster = () => {
+        document.getElementById('roster-container').innerHTML = renderRosterForTeam(allGames, rosterSelect.value);
+      };
+      rosterSelect.addEventListener('change', renderSelectedRoster);
+      renderSelectedRoster();
+    }
+
+    // Wire up player stats
+    const statsFilter = document.getElementById('stats-team-filter');
+    const statsSearch = document.getElementById('stats-search');
+    const statsContainer = document.getElementById('stats-table-container');
+
+    function refreshStats() {
+      statsContainer.innerHTML = renderStatsTable(allStats, statsFilter.value, statsSearch.value);
+      // Re-wire sort headers
+      statsContainer.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+          const col = th.dataset.col;
+          if (statsSortCol === col) {
+            statsSortDir *= -1;
+          } else {
+            statsSortCol = col;
+            statsSortDir = (col === 'name' || col === 'team' || col === 'position') ? 1 : -1;
+          }
+          refreshStats();
+        });
+      });
+    }
+
+    if (statsFilter && statsSearch && statsContainer) {
+      statsFilter.addEventListener('change', refreshStats);
+      statsSearch.addEventListener('input', refreshStats);
+      refreshStats();
+    }
+
+  } catch (err) {
+    document.getElementById('content').innerHTML = `
+      <div class="loading" style="color:var(--red)">
+        <div style="font-size:24px;margin-bottom:12px">Error Loading Data</div>
+        <div style="font-size:14px;color:var(--text-muted)">${err.message}</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:8px">Ensure data/games.json exists and the page is served via HTTP.</div>
+      </div>
+    `;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
