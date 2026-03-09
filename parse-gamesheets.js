@@ -343,6 +343,21 @@ const games = files.map(f => {
 // Sort by date
 games.sort((a, b) => a.isoDate.localeCompare(b.isoDate));
 
+// Inject goalie starter assignments from goalie_assignments.json
+const goalieAssignFile = path.join(__dirname, 'data', 'goalie_assignments.json');
+if (fs.existsSync(goalieAssignFile)) {
+  const goalieData = JSON.parse(fs.readFileSync(goalieAssignFile, 'utf8'));
+  const assignments = goalieData.assignments || {};
+  let assigned = 0;
+  games.forEach(g => {
+    if (assignments[g.id]) {
+      g.eaglesStarter = assignments[g.id];
+      assigned++;
+    }
+  });
+  console.log(`\nInjected goalie starter assignments for ${assigned}/${games.length} games`);
+}
+
 const output = {
   metadata: {
     league: 'GTHL / OHF',
