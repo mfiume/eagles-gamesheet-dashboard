@@ -1931,23 +1931,40 @@ function renderGamesheet(game) {
             tlSvg += '<text x="' + x + '" y="' + (y + 3) + '" fill="white" font-size="6" text-anchor="middle" font-family="IBM Plex Mono,monospace" style="pointer-events:none">' + p.number + '</text>';
           });
 
-          // Draw penalty duration bars (time off to on)
+          // Draw penalty duration bars (time off to on), handling cross-period penalties
           allPens.forEach(p => {
             const start = p.startTime;
             const end = p.onTime || p.endTime;
             if (!start || !end || !p.period) return;
-            const x1 = timeToX(p.period, start);
-            // Penalty may span into next period — clamp to same period for simplicity
-            const endParts = end.split(':');
-            const startParts = start.split(':');
-            const startElapsed = periodMins - parseInt(startParts[0]) - (parseInt(startParts[1]) || 0) / 60;
-            const endElapsed = periodMins - parseInt(endParts[0]) - (parseInt(endParts[1]) || 0) / 60;
-            if (endElapsed <= startElapsed) return; // penalty ended before start (cross-period or data issue)
-            const x2 = tlPad + (p.period - 1) * periodW + (endElapsed / periodMins) * periodW;
             const isHome = p.side === 'home';
             const isEaglesPen = (isHome && homeIsEagles) || (!isHome && !homeIsEagles && game.visitorTeam === TEAM);
             const color = isEaglesPen ? 'var(--accent)' : 'var(--red)';
-            tlSvg += '<rect x="' + x1 + '" y="' + (penLineY - 3) + '" width="' + Math.max(x2 - x1, 2) + '" height="3" rx="1" fill="' + color + '" opacity="0.2"/>';
+            const startParts = start.split(':');
+            const endParts = end.split(':');
+            const startElapsed = periodMins - parseInt(startParts[0]) - (parseInt(startParts[1]) || 0) / 60;
+            const endElapsed = periodMins - parseInt(endParts[0]) - (parseInt(endParts[1]) || 0) / 60;
+            if (endElapsed > startElapsed) {
+              // Penalty stays within same period
+              const x1 = timeToX(p.period, start);
+              const x2 = tlPad + (p.period - 1) * periodW + (endElapsed / periodMins) * periodW;
+              tlSvg += '<rect x="' + x1 + '" y="' + (penLineY - 3) + '" width="' + Math.max(x2 - x1, 2) + '" height="3" rx="1" fill="' + color + '" opacity="0.2"/>';
+            } else if (p.period < 3) {
+              // Penalty crosses into next period
+              // Part 1: from start to end of current period
+              const x1 = timeToX(p.period, start);
+              const x1End = tlPad + p.period * periodW;
+              if (x1End > x1) {
+                tlSvg += '<rect x="' + x1 + '" y="' + (penLineY - 3) + '" width="' + (x1End - x1) + '" height="3" rx="1" fill="' + color + '" opacity="0.2"/>';
+              }
+              // Part 2: from start of next period to end time
+              const nextPeriod = p.period + 1;
+              const endElapsedNext = periodMins - parseInt(endParts[0]) - (parseInt(endParts[1]) || 0) / 60;
+              if (endElapsedNext > 0) {
+                const x2Start = tlPad + (nextPeriod - 1) * periodW;
+                const x2End = x2Start + (endElapsedNext / periodMins) * periodW;
+                tlSvg += '<rect x="' + x2Start + '" y="' + (penLineY - 3) + '" width="' + Math.max(x2End - x2Start, 2) + '" height="3" rx="1" fill="' + color + '" opacity="0.2"/>';
+              }
+            }
           });
 
           // Running score at end
