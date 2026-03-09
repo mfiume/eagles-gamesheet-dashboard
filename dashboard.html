@@ -1159,6 +1159,17 @@ function buildPlayerProfile(playerName, teamName) {
     return `<div title="${title}" style="width:${size};height:${size};border-radius:50%;background:${color};flex-shrink:0;cursor:help"></div>`;
   }).join('');
 
+  // Point production chart data (cumulative and per-game)
+  const profileId = playerName.replace(/[^a-zA-Z0-9]/g, '_');
+  let cumPts = 0, cumG = 0, cumA = 0;
+  const pointChartData = gameLog.map((g, i) => {
+    cumPts += g.pts; cumG += g.goals; cumA += g.assists;
+    return { game: i + 1, date: g.date, opp: g.opponent, pts: g.pts, goals: g.goals, assists: g.assists, cumPts, cumG, cumA };
+  });
+  const maxCumPts = cumPts || 1;
+  const maxPerGame = Math.max(...gameLog.map(g => g.pts), 1);
+  const chartW = Math.max(gameLog.length * 24, 300);
+
   return `
     <div class="card" style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
@@ -1211,6 +1222,90 @@ function buildPlayerProfile(playerName, teamName) {
         </div>
       </div>
     </div>
+
+    ${gameLog.length > 1 ? `<div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin:0">Point Production</div>
+        <div style="display:flex;gap:4px">
+          <button id="ppChart_cum_${profileId}" onclick="togglePointChart('${profileId}','cumulative')" style="padding:4px 12px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--bg);font-size:11px;font-weight:600;cursor:pointer">Cumulative</button>
+          <button id="ppChart_pg_${profileId}" onclick="togglePointChart('${profileId}','pergame')" style="padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:11px;font-weight:600;cursor:pointer">Per Game</button>
+        </div>
+      </div>
+      <div id="ppChart_${profileId}" style="overflow-x:auto">
+        <svg width="${chartW}" height="180" style="display:block">
+          ${pointChartData.map((d, i) => {
+            const x = 20 + i * ((chartW - 40) / (gameLog.length - 1 || 1));
+            return '';
+          }).join('')}
+        </svg>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text-dim)">
+        <span><span style="display:inline-block;width:10px;height:3px;background:var(--accent);vertical-align:middle;border-radius:2px"></span> Points</span>
+        <span><span style="display:inline-block;width:10px;height:3px;background:var(--green);vertical-align:middle;border-radius:2px"></span> Goals</span>
+        <span><span style="display:inline-block;width:10px;height:3px;background:var(--purple);vertical-align:middle;border-radius:2px"></span> Assists</span>
+      </div>
+      <script>
+        (function(){
+          const data = ${JSON.stringify(pointChartData)};
+          const id = '${profileId}';
+          const chartW = ${chartW};
+          window['ppData_'+id] = data;
+          window.togglePointChart = window.togglePointChart || function(pid, mode) {
+            const d = window['ppData_'+pid];
+            if (!d || d.length === 0) return;
+            const container = document.getElementById('ppChart_'+pid);
+            const cumBtn = document.getElementById('ppChart_cum_'+pid);
+            const pgBtn = document.getElementById('ppChart_pg_'+pid);
+            const isCum = mode === 'cumulative';
+            cumBtn.style.background = isCum ? 'var(--accent)' : 'transparent';
+            cumBtn.style.color = isCum ? 'var(--bg)' : 'var(--text-muted)';
+            cumBtn.style.borderColor = isCum ? 'var(--accent)' : 'var(--border)';
+            pgBtn.style.background = isCum ? 'transparent' : 'var(--accent)';
+            pgBtn.style.color = isCum ? 'var(--text-muted)' : 'var(--bg)';
+            pgBtn.style.borderColor = isCum ? 'var(--border)' : 'var(--accent)';
+            const w = ${chartW}, h = 160, pad = 30;
+            const maxVal = isCum ? Math.max(...d.map(p=>p.cumPts),1) : Math.max(...d.map(p=>p.pts),1);
+            const xStep = d.length > 1 ? (w - pad*2) / (d.length - 1) : 0;
+            function yPos(v) { return h - pad - (v / maxVal) * (h - pad*2); }
+            function line(vals, color) {
+              if (d.length === 1) return '<circle cx="'+(pad)+'" cy="'+yPos(vals[0])+'" r="4" fill="'+color+'"/>';
+              let path = 'M';
+              vals.forEach((v,i) => { path += (i?'L':'') + (pad+i*xStep) + ',' + yPos(v); });
+              let dots = vals.map((v,i) => '<circle cx="'+(pad+i*xStep)+'" cy="'+yPos(v)+'" r="3" fill="'+color+'"/>').join('');
+              return '<path d="'+path+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' + dots;
+            }
+            const ptsVals = isCum ? d.map(p=>p.cumPts) : d.map(p=>p.pts);
+            const gVals = isCum ? d.map(p=>p.cumG) : d.map(p=>p.goals);
+            const aVals = isCum ? d.map(p=>p.cumA) : d.map(p=>p.assists);
+            // Y axis labels
+            const yTicks = 5;
+            let yLabels = '';
+            for (let i = 0; i <= yTicks; i++) {
+              const v = Math.round(maxVal * i / yTicks);
+              const y = yPos(v);
+              yLabels += '<text x="'+(pad-6)+'" y="'+(y+3)+'" fill="rgba(255,255,255,0.3)" font-size="9" text-anchor="end" font-family="IBM Plex Mono,monospace">'+v+'</text>';
+              yLabels += '<line x1="'+pad+'" y1="'+y+'" x2="'+(w-pad)+'" y2="'+y+'" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>';
+            }
+            // X axis labels (every nth game)
+            let xLabels = '';
+            const step = Math.max(1, Math.floor(d.length / 10));
+            d.forEach((p,i) => {
+              if (i % step === 0 || i === d.length-1) {
+                xLabels += '<text x="'+(pad+i*xStep)+'" y="'+(h-8)+'" fill="rgba(255,255,255,0.3)" font-size="9" text-anchor="middle" font-family="IBM Plex Mono,monospace">'+p.game+'</text>';
+              }
+            });
+            // Hover targets
+            let hovers = d.map((p,i) => {
+              const x = pad+i*xStep;
+              const label = isCum ? p.cumPts+'pts ('+p.cumG+'G+'+p.cumA+'A)' : p.pts+'pts ('+p.goals+'G+'+p.assists+'A)';
+              return '<rect x="'+(x-8)+'" y="'+pad+'" width="16" height="'+(h-pad*2)+'" fill="transparent" style="cursor:help"><title>Game '+p.game+': '+p.date+' vs '+p.opp+'\\n'+label+'</title></rect>';
+            }).join('');
+            container.innerHTML = '<svg width="'+w+'" height="'+h+'" style="display:block">'+yLabels+xLabels+line(aVals,'var(--purple)')+line(gVals,'var(--green)')+line(ptsVals,'var(--accent)')+hovers+'</svg>';
+          };
+          togglePointChart(id, 'cumulative');
+        })();
+      </script>
+    </div>` : ''}
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div class="card">
@@ -2415,7 +2510,7 @@ function renderAnalytics(games) {
 // Main
 async function init() {
   try {
-    const resp = await fetch('data/games.json');
+    const resp = await fetch('data/games.json?v=' + Date.now());
     DATA = await resp.json();
     allGames = DATA.games;
 
