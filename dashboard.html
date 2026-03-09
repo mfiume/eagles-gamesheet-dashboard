@@ -2454,7 +2454,8 @@ function renderAnalytics(games) {
   eaglesGames.forEach(g => {
     const side = getEaglesSide(g);
     const activeSkaters = g[side].roster.filter(p => p.status === 'active' && p.position !== 'G').length;
-    skaterCounts.push({ date: g.isoDate, opponent: getOpponent(g), count: activeSkaters, gameType: g.gameType });
+    const result = getResult(g);
+    skaterCounts.push({ date: g.isoDate, opponent: getOpponent(g), count: activeSkaters, gameType: g.gameType, result });
   });
   skaterCounts.sort((a, b) => a.date.localeCompare(b.date));
   const avgSkaters = skaterCounts.length > 0 ? (skaterCounts.reduce((s, g) => s + g.count, 0) / skaterCounts.length).toFixed(1) : 0;
@@ -2493,8 +2494,8 @@ function renderAnalytics(games) {
   const rosterDots = skaterCounts.map((g, i) => {
     const x = rosterPad + i * rosterXStep;
     const y = rosterYPos(g.count);
-    const color = g.count >= 11 ? 'var(--green)' : g.count >= 9 ? 'var(--accent)' : 'var(--yellow)';
-    return `<circle cx="${x}" cy="${y}" r="4" fill="${color}" style="cursor:help"><title>${g.date} vs ${g.opponent}\n${g.count} skaters</title></circle>`;
+    const color = g.result === 'W' ? 'var(--green)' : g.result === 'L' ? 'var(--red)' : 'var(--yellow)';
+    return `<circle cx="${x}" cy="${y}" r="4" fill="${color}" style="cursor:help"><title>${g.date} vs ${g.opponent}\n${g.count} skaters — ${g.result}</title></circle>`;
   }).join('');
 
   // Y grid lines
@@ -2610,7 +2611,7 @@ function renderAnalytics(games) {
               <text x="${rosterChartW - rosterPad + 4}" y="${rosterYPos(parseFloat(avgSkaters)) + 3}" fill="var(--text-dim)" font-size="9" font-family="IBM Plex Mono,monospace">avg ${avgSkaters}</text>
             </svg>
           </div>
-          <div style="margin-top:8px;font-size:11px;color:var(--text-dim)">Game number on x-axis. Dot color: <span style="color:var(--green)">11+</span> skaters, <span style="color:var(--accent)">9-10</span>, <span style="color:var(--yellow)">&lt;9</span>. Dashed line = season average.</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text-dim)">Game number on x-axis. Dot color: <span style="color:var(--green)">Win</span>, <span style="color:var(--red)">Loss</span>, <span style="color:var(--yellow)">Tie</span>. Dashed line = season average.</div>
         </div>
 
         <div class="card full-width">
