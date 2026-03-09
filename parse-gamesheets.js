@@ -340,6 +340,18 @@ const games = files.map(f => {
   return game;
 });
 
+// Fix known goalies whose position is missing in gamesheet data
+const KNOWN_GOALIES = ['GEORGIA BONNER', 'VINCENT HICKS', 'Josh jankowski'];
+games.forEach(g => {
+  ['home', 'visitor'].forEach(side => {
+    g[side].roster.forEach(p => {
+      if (KNOWN_GOALIES.some(name => name.toLowerCase() === p.name.toLowerCase()) && p.position !== 'G') {
+        p.position = 'G';
+      }
+    });
+  });
+});
+
 // Sort by date
 games.sort((a, b) => a.isoDate.localeCompare(b.isoDate));
 

@@ -4,7 +4,7 @@
     "division": "Under 10 AA",
     "season": "2025-2026",
     "totalGames": 37,
-    "generatedAt": "2026-03-09T00:42:06.680Z"
+    "generatedAt": "2026-03-09T01:29:27.978Z"
   },
   "games": [
     {
@@ -5541,7 +5541,7 @@
           },
           {
             "number": 60,
-            "position": "",
+            "position": "G",
             "name": "Josh jankowski",
             "status": "active"
           }
