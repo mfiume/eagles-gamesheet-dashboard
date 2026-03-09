@@ -847,6 +847,7 @@ footer {
     <button class="tab-btn" data-tab="playerstats">Player Stats</button>
     <button class="tab-btn" data-tab="scouting">Scouting Report</button>
     <button class="tab-btn" data-tab="analytics">Advanced Analytics</button>
+    <button class="tab-btn" data-tab="officials">Officials</button>
   </div>
 
   <div id="content">
@@ -1841,7 +1842,7 @@ function renderGamesheet(game) {
       <div class="gamesheet-section scoring-full">
         <h3>Scoring Summary</h3>
         ${allGoals.length > 0 ? (() => {
-          const tlW = 720, tlH = 140, tlPad = 40, tlMid = tlH / 2;
+          const tlW = 780, tlH = 140, tlPad = 80, tlMid = tlH / 2;
           const periodW = (tlW - tlPad * 2) / 3;
           const periodMins = 12;
 
@@ -2937,6 +2938,212 @@ function renderAnalytics(games) {
   `;
 }
 
+// Tab 7: Officials
+function renderOfficials(games) {
+  const eaglesGames = games.filter(g => g.homeTeam === TEAM || g.visitorTeam === TEAM);
+
+  // Parse individual refs from comma-separated referee field
+  function parseRefs(refStr) {
+    if (!refStr) return [];
+    return refStr.split(',').map(r => r.trim().replace(/\s+\d{2}$/, '')).filter(Boolean);
+  }
+
+  // Build per-referee stats
+  const refStats = {};
+  eaglesGames.forEach(g => {
+    const refs = parseRefs(g.referee);
+    const ourSide = getEaglesSide(g);
+    const theirSide = ourSide === 'home' ? 'visitor' : 'home';
+    const result = getResult(g);
+    const opp = getOpponent(g);
+    const ourPens = g[ourSide].penalties;
+    const theirPens = g[theirSide].penalties;
+    const ourPIM = ourPens.reduce((s, p) => s + (typeof p.minutes === 'number' ? p.minutes : parseInt(p.minutes) || 0), 0);
+    const theirPIM = theirPens.reduce((s, p) => s + (typeof p.minutes === 'number' ? p.minutes : parseInt(p.minutes) || 0), 0);
+    const ourScore = ourSide === 'home' ? g.homeScore : g.visitorScore;
+    const oppScore = ourSide === 'home' ? g.visitorScore : g.homeScore;
+
+    // Penalty codes
+    const allPenCodes = {};
+    [...ourPens, ...theirPens].forEach(p => { allPenCodes[p.code] = (allPenCodes[p.code] || 0) + 1; });
+
+    refs.forEach(ref => {
+      if (!refStats[ref]) refStats[ref] = {
+        gp: 0, w: 0, l: 0, t: 0,
+        eaglesPens: 0, oppPens: 0, eaglesPIM: 0, oppPIM: 0,
+        totalPens: 0, totalPIM: 0,
+        penCodes: {}, games: [],
+        gf: 0, ga: 0
+      };
+      const rs = refStats[ref];
+      rs.gp++;
+      if (result === 'W') rs.w++; else if (result === 'L') rs.l++; else rs.t++;
+      rs.eaglesPens += ourPens.length;
+      rs.oppPens += theirPens.length;
+      rs.eaglesPIM += ourPIM;
+      rs.oppPIM += theirPIM;
+      rs.totalPens += ourPens.length + theirPens.length;
+      rs.totalPIM += ourPIM + theirPIM;
+      rs.gf += ourScore;
+      rs.ga += oppScore;
+      Object.entries(allPenCodes).forEach(([code, count]) => {
+        rs.penCodes[code] = (rs.penCodes[code] || 0) + count;
+      });
+      rs.games.push({ date: g.isoDate, opp, result, ourPens: ourPens.length, theirPens: theirPens.length, ourPIM, theirPIM, score: ourScore + '-' + oppScore });
+    });
+  });
+
+  // Sort refs by games officiated
+  const sortedRefs = Object.entries(refStats).sort((a, b) => b[1].gp - a[1].gp);
+
+  // League-wide averages
+  let totalGamePens = 0, totalGamePIM = 0;
+  eaglesGames.forEach(g => {
+    const ourSide = getEaglesSide(g);
+    const theirSide = ourSide === 'home' ? 'visitor' : 'home';
+    totalGamePens += g[ourSide].penalties.length + g[theirSide].penalties.length;
+    totalGamePIM += g[ourSide].penalties.reduce((s, p) => s + (typeof p.minutes === 'number' ? p.minutes : parseInt(p.minutes) || 0), 0);
+    totalGamePIM += g[theirSide].penalties.reduce((s, p) => s + (typeof p.minutes === 'number' ? p.minutes : parseInt(p.minutes) || 0), 0);
+  });
+  const avgPensPerGame = (totalGamePens / eaglesGames.length).toFixed(1);
+  const avgPIMPerGame = (totalGamePIM / eaglesGames.length).toFixed(1);
+
+  // Referee summary table
+  const refRows = sortedRefs.map(([name, rs]) => {
+    const winPct = ((rs.w + rs.t * 0.5) / rs.gp * 100).toFixed(0);
+    const pensPerGame = (rs.totalPens / rs.gp).toFixed(1);
+    const pimPerGame = (rs.totalPIM / rs.gp).toFixed(1);
+    const eaglesPensPG = (rs.eaglesPens / rs.gp).toFixed(1);
+    const oppPensPG = (rs.oppPens / rs.gp).toFixed(1);
+    const penDiff = (rs.eaglesPens / rs.gp - rs.oppPens / rs.gp).toFixed(1);
+    const diffColor = parseFloat(penDiff) > 0.5 ? 'color:var(--red)' : parseFloat(penDiff) < -0.5 ? 'color:var(--green)' : '';
+    const pensHighlight = parseFloat(pensPerGame) > parseFloat(avgPensPerGame) * 1.3 ? 'color:var(--yellow)' : parseFloat(pensPerGame) < parseFloat(avgPensPerGame) * 0.7 ? 'color:var(--green)' : '';
+    return `<tr>
+      <td style="font-weight:600">${name}</td>
+      <td class="center mono">${rs.gp}</td>
+      <td class="center mono" style="color:var(--green)">${rs.w}</td>
+      <td class="center mono" style="color:var(--red)">${rs.l}</td>
+      <td class="center mono" style="color:var(--yellow)">${rs.t}</td>
+      <td class="center mono" style="font-weight:700">${winPct}%</td>
+      <td class="center mono" style="${pensHighlight}">${pensPerGame}</td>
+      <td class="center mono">${pimPerGame}</td>
+      <td class="center mono">${eaglesPensPG}</td>
+      <td class="center mono">${oppPensPG}</td>
+      <td class="center mono" style="${diffColor};font-weight:700">${parseFloat(penDiff) > 0 ? '+' : ''}${penDiff}</td>
+    </tr>`;
+  }).join('');
+
+  // Refs with 2+ games — detailed cards
+  const frequentRefs = sortedRefs.filter(([_, rs]) => rs.gp >= 2);
+  const refCards = frequentRefs.map(([name, rs]) => {
+    const winPct = ((rs.w + rs.t * 0.5) / rs.gp * 100).toFixed(0);
+    const pensPerGame = (rs.totalPens / rs.gp).toFixed(1);
+
+    // Top penalty codes for this ref
+    const topCodes = Object.entries(rs.penCodes).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const maxCode = topCodes.length ? topCodes[0][1] : 1;
+    const codeBars = topCodes.map(([code, count]) => {
+      const pct = (count / maxCode) * 100;
+      const codeName = PENALTY_NAMES[code] || code;
+      return '<div class="bar-row"><span class="bar-label">' + code + '</span><div class="bar-track"><div class="bar-fill yellow" style="width:' + pct + '%"></div><span class="bar-text-outside">' + count + 'x ' + codeName + '</span></div></div>';
+    }).join('');
+
+    // Game log for this ref
+    const gameRows = rs.games.map(g => {
+      const rColor = g.result === 'W' ? 'color:var(--green)' : g.result === 'L' ? 'color:var(--red)' : 'color:var(--yellow)';
+      const penDiff = g.ourPens - g.theirPens;
+      const pdColor = penDiff > 0 ? 'color:var(--red)' : penDiff < 0 ? 'color:var(--green)' : '';
+      return '<tr><td>' + g.date + '</td><td>' + g.opp + '</td><td class="center mono" style="' + rColor + ';font-weight:700">' + g.result + ' ' + g.score + '</td><td class="center mono">' + g.ourPens + '</td><td class="center mono">' + g.theirPens + '</td><td class="center mono" style="' + pdColor + '">' + (penDiff > 0 ? '+' : '') + penDiff + '</td><td class="center mono">' + (g.ourPIM + g.theirPIM) + '</td></tr>';
+    }).join('');
+
+    return `<div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin:0">${name}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${rs.gp} games</div>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+        <div class="mini-stat"><div class="mini-val" style="color:var(--green)">${rs.w}</div><div class="mini-label">W</div></div>
+        <div class="mini-stat"><div class="mini-val" style="color:var(--red)">${rs.l}</div><div class="mini-label">L</div></div>
+        <div class="mini-stat"><div class="mini-val" style="color:var(--yellow)">${rs.t}</div><div class="mini-label">T</div></div>
+        <div class="mini-stat"><div class="mini-val">${winPct}%</div><div class="mini-label">Win %</div></div>
+        <div class="mini-stat"><div class="mini-val" style="color:var(--yellow)">${pensPerGame}</div><div class="mini-label">Pens/G</div></div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px">Top Calls</div>
+      <div class="bar-chart" style="margin-bottom:12px">${codeBars || '<span style="color:var(--text-dim);font-size:12px">No penalties</span>'}</div>
+      <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:6px">Game Log</div>
+      <div class="table-wrap" style="max-height:180px;overflow-y:auto"><table>
+        <thead><tr><th>Date</th><th>Opp</th><th class="center">Result</th><th class="center">Our P</th><th class="center">Opp P</th><th class="center">Diff</th><th class="center">PIM</th></tr></thead>
+        <tbody>${gameRows}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
+
+  // Penalty style analysis: which refs call tight vs loose
+  const refsByPenRate = sortedRefs.filter(([_, rs]) => rs.gp >= 2).sort((a, b) => b[1].totalPens / b[1].gp - a[1].totalPens / a[1].gp);
+  const maxPenRate = refsByPenRate.length ? refsByPenRate[0][1].totalPens / refsByPenRate[0][1].gp : 1;
+  const penRateBars = refsByPenRate.map(([name, rs]) => {
+    const rate = rs.totalPens / rs.gp;
+    const pct = (rate / maxPenRate) * 100;
+    const color = rate > parseFloat(avgPensPerGame) * 1.2 ? 'red' : rate < parseFloat(avgPensPerGame) * 0.8 ? 'green' : 'yellow';
+    return '<div class="bar-row"><span class="bar-label" style="min-width:140px;font-size:11px">' + name + '</span><div class="bar-track"><div class="bar-fill ' + color + '" style="width:' + pct + '%"></div><span class="bar-text-outside">' + rate.toFixed(1) + ' pens/game (' + rs.gp + ' GP)</span></div></div>';
+  }).join('');
+
+  // Eagles penalty diff by ref (are we penalized more or less?)
+  const refsByEaglesDiff = sortedRefs.filter(([_, rs]) => rs.gp >= 2).sort((a, b) => {
+    return (a[1].eaglesPens / a[1].gp - a[1].oppPens / a[1].gp) - (b[1].eaglesPens / b[1].gp - b[1].oppPens / b[1].gp);
+  });
+  const maxDiffRate = Math.max(...refsByEaglesDiff.map(([_, rs]) => Math.abs(rs.eaglesPens / rs.gp - rs.oppPens / rs.gp)), 1);
+  const eaglesDiffBars = refsByEaglesDiff.map(([name, rs]) => {
+    const diff = rs.eaglesPens / rs.gp - rs.oppPens / rs.gp;
+    const absDiff = Math.abs(diff);
+    const pct = (absDiff / maxDiffRate) * 50;
+    const isPos = diff > 0;
+    const color = isPos ? 'red' : 'green';
+    const label = (isPos ? '+' : '') + diff.toFixed(1) + ' pens/game vs opp';
+    return '<div class="bar-row"><span class="bar-label" style="min-width:140px;font-size:11px">' + name + '</span><div class="bar-track"><div class="bar-fill ' + color + '" style="width:' + pct + '%;margin-left:' + (isPos ? '50' : (50 - pct)) + '%"></div><span class="bar-text-outside">' + label + ' (' + rs.gp + ' GP)</span></div></div>';
+  }).join('');
+
+  return `
+    <div class="tab-panel" id="tab-officials">
+      <div class="analytics-grid">
+        <div class="card full-width">
+          <div class="card-title">Referee Summary</div>
+          <div style="margin-bottom:12px;font-size:12px;color:var(--text-dim)">League average: ${avgPensPerGame} penalties/game, ${avgPIMPerGame} PIM/game. Pen Diff = Eagles penalties/game minus opponent penalties/game (positive = more calls against us).</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Referee</th><th class="center">GP</th><th class="center">W</th><th class="center">L</th><th class="center">T</th><th class="center">Win %</th>
+                <th class="center">Pens/G</th><th class="center">PIM/G</th>
+                <th class="center">Eag P/G</th><th class="center">Opp P/G</th><th class="center">Pen Diff</th>
+              </tr></thead>
+              <tbody>${refRows}</tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Officiating Style: Penalties per Game</div>
+          <div style="margin-bottom:8px;font-size:11px;color:var(--text-dim)">Refs with 2+ games. <span style="color:var(--red)">Red</span> = tight whistle, <span style="color:var(--green)">green</span> = loose, <span style="color:var(--yellow)">yellow</span> = average.</div>
+          <div class="bar-chart">${penRateBars || '<div class="no-data">Not enough data</div>'}</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Eagles Penalty Differential by Referee</div>
+          <div style="margin-bottom:8px;font-size:11px;color:var(--text-dim)">Refs with 2+ games. <span style="color:var(--red)">Red</span> = more calls against Eagles, <span style="color:var(--green)">green</span> = fewer.</div>
+          <div class="bar-chart">${eaglesDiffBars || '<div class="no-data">Not enough data</div>'}</div>
+        </div>
+
+        <div class="card full-width">
+          <div class="card-title">Referee Profiles (2+ games)</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:16px">
+            ${refCards || '<div class="no-data">Not enough data for individual profiles</div>'}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // Main
 async function init() {
   try {
@@ -2956,7 +3163,8 @@ async function init() {
       renderRosters(allGames) +
       renderPlayerStats(allGames) +
       renderScouting(allGames) +
-      renderAnalytics(allGames);
+      renderAnalytics(allGames) +
+      renderOfficials(allGames);
 
     // Wire up game log clicks
     content.querySelectorAll('tr.clickable[data-game-idx]').forEach(row => {
