@@ -524,6 +524,34 @@ select option { background: var(--card); color: var(--text); }
   pointer-events: none;
   text-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
+.mini-stat {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+.mini-val {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.mini-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+.player-link {
+  cursor: pointer;
+  color: var(--text);
+  transition: color 0.15s;
+}
+.player-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
 .bar-fill.accent { background: linear-gradient(90deg, var(--accent), #60a5fa); }
 .bar-fill.green { background: linear-gradient(90deg, var(--green), #6ee7b7); }
 .bar-fill.red { background: linear-gradient(90deg, var(--red), #fca5a5); }
@@ -916,6 +944,315 @@ document.getElementById('modal').addEventListener('click', e => {
   if (e.target === document.getElementById('modal')) closeModal();
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ── Player Profile ──
+function buildPlayerProfile(playerName, teamName) {
+  const games = allGames;
+  const isEagles = teamName === TEAM;
+
+  // Build game log
+  const gameLog = [];
+  games.forEach(g => {
+    const side = g.homeTeam === teamName ? 'home' : g.visitorTeam === teamName ? 'visitor' : null;
+    if (!side) return;
+    const sideData = g[side];
+    const inRoster = sideData.roster.some(p => p.name === playerName && p.status === 'active');
+    if (!inRoster) return;
+
+    const opponent = side === 'home' ? g.visitorTeam : g.homeTeam;
+    const loc = side === 'home' ? 'Home' : 'Away';
+    const teamScore = side === 'home' ? g.homeScore : g.visitorScore;
+    const oppScore = side === 'home' ? g.visitorScore : g.homeScore;
+    const result = teamScore > oppScore ? 'W' : teamScore < oppScore ? 'L' : 'T';
+
+    let goals = 0, assists = 0, pim = 0;
+    const penDetails = [];
+    const goalDetails = [];
+
+    sideData.scoring.forEach(s => {
+      if (s.goalScorer === playerName) { goals++; goalDetails.push({ period: s.period, time: s.time, type: s.type }); }
+      if (s.assist1 === playerName || s.assist2 === playerName) assists++;
+    });
+    sideData.penalties.forEach(p => {
+      if (p.player === playerName) {
+        const mins = typeof p.minutes === 'number' ? p.minutes : parseInt(p.minutes) || 0;
+        pim += mins;
+        penDetails.push({ period: p.period, minutes: mins, code: p.code });
+      }
+    });
+
+    gameLog.push({
+      date: g.date.split(' ')[0],
+      isoDate: g.isoDate,
+      opponent, loc, result, teamScore, oppScore,
+      goals, assists, pts: goals + assists, pim,
+      penDetails, goalDetails,
+      gameType: g.gameType
+    });
+  });
+
+  // Sort chronologically
+  gameLog.sort((a, b) => a.isoDate.localeCompare(b.isoDate));
+
+  const gp = gameLog.length;
+  const totalG = gameLog.reduce((s, g) => s + g.goals, 0);
+  const totalA = gameLog.reduce((s, g) => s + g.assists, 0);
+  const totalPts = totalG + totalA;
+  const totalPIM = gameLog.reduce((s, g) => s + g.pim, 0);
+  const ppg = gp > 0 ? (totalPts / gp).toFixed(2) : '0.00';
+
+  // Streaks
+  let longestPtStreak = 0, curPtStreak = 0;
+  let longestGStreak = 0, curGStreak = 0;
+  let currentStreak = 0, currentStreakType = '';
+  gameLog.forEach(g => {
+    if (g.pts > 0) { curPtStreak++; longestPtStreak = Math.max(longestPtStreak, curPtStreak); } else { curPtStreak = 0; }
+    if (g.goals > 0) { curGStreak++; longestGStreak = Math.max(longestGStreak, curGStreak); } else { curGStreak = 0; }
+  });
+  // Current streak (from most recent game backwards)
+  if (gameLog.length > 0) {
+    const recent = [...gameLog].reverse();
+    if (recent[0].pts > 0) {
+      currentStreakType = 'point';
+      for (const g of recent) { if (g.pts > 0) currentStreak++; else break; }
+    } else if (recent[0].goals > 0) {
+      currentStreakType = 'goal';
+      for (const g of recent) { if (g.goals > 0) currentStreak++; else break; }
+    }
+  }
+
+  // Multi-point games
+  const multiPtGames = gameLog.filter(g => g.pts >= 2).length;
+  const hatTricks = gameLog.filter(g => g.goals >= 3).length;
+
+  // Scoring by period
+  const goalsByPeriod = { 1: 0, 2: 0, 3: 0 };
+  const assistsByPeriod = { 1: 0, 2: 0, 3: 0 };
+  games.forEach(g => {
+    const side = g.homeTeam === teamName ? 'home' : g.visitorTeam === teamName ? 'visitor' : null;
+    if (!side) return;
+    g[side].scoring.forEach(s => {
+      if (s.goalScorer === playerName && goalsByPeriod[s.period] !== undefined) goalsByPeriod[s.period]++;
+      if ((s.assist1 === playerName || s.assist2 === playerName) && assistsByPeriod[s.period] !== undefined) assistsByPeriod[s.period]++;
+    });
+  });
+
+  // Home vs Away splits
+  const homeGames = gameLog.filter(g => g.loc === 'Home');
+  const awayGames = gameLog.filter(g => g.loc === 'Away');
+  const homeSplit = { gp: homeGames.length, g: homeGames.reduce((s,g) => s+g.goals, 0), a: homeGames.reduce((s,g) => s+g.assists, 0), pim: homeGames.reduce((s,g) => s+g.pim, 0) };
+  const awaySplit = { gp: awayGames.length, g: awayGames.reduce((s,g) => s+g.goals, 0), a: awayGames.reduce((s,g) => s+g.assists, 0), pim: awayGames.reduce((s,g) => s+g.pim, 0) };
+  homeSplit.pts = homeSplit.g + homeSplit.a;
+  awaySplit.pts = awaySplit.g + awaySplit.a;
+
+  // Performance by opponent
+  const byOpp = {};
+  gameLog.forEach(g => {
+    if (!byOpp[g.opponent]) byOpp[g.opponent] = { gp: 0, g: 0, a: 0, pts: 0, pim: 0 };
+    byOpp[g.opponent].gp++;
+    byOpp[g.opponent].g += g.goals;
+    byOpp[g.opponent].a += g.assists;
+    byOpp[g.opponent].pts += g.pts;
+    byOpp[g.opponent].pim += g.pim;
+  });
+
+  // Penalty histogram
+  const penByCodes = {};
+  games.forEach(g => {
+    const side = g.homeTeam === teamName ? 'home' : g.visitorTeam === teamName ? 'visitor' : null;
+    if (!side) return;
+    g[side].penalties.forEach(p => {
+      if (p.player === playerName) {
+        penByCodes[p.code] = (penByCodes[p.code] || 0) + 1;
+      }
+    });
+  });
+
+  // Special teams goals
+  let ppGoals = 0, shGoals = 0;
+  games.forEach(g => {
+    const side = g.homeTeam === teamName ? 'home' : g.visitorTeam === teamName ? 'visitor' : null;
+    if (!side) return;
+    g[side].scoring.forEach(s => {
+      if (s.goalScorer === playerName) {
+        if (s.type === 'PP') ppGoals++;
+        if (s.type === 'SH') shGoals++;
+      }
+    });
+  });
+
+  // Get player number and position
+  let playerNumber = '';
+  let playerPos = '';
+  games.forEach(g => {
+    const side = g.homeTeam === teamName ? 'home' : g.visitorTeam === teamName ? 'visitor' : null;
+    if (!side) return;
+    const found = g[side].roster.find(p => p.name === playerName);
+    if (found) { playerNumber = found.number; playerPos = found.position || 'S'; }
+  });
+
+  // ── Render ──
+  const resultClass = r => r === 'W' ? 'color:var(--green)' : r === 'L' ? 'color:var(--red)' : 'color:var(--yellow)';
+
+  // Game log rows
+  const gameLogRows = gameLog.map(g => {
+    const ptsStyle = g.pts > 0 ? 'color:var(--accent);font-weight:700' : '';
+    const pimStyle = g.pim > 0 ? 'color:var(--yellow)' : '';
+    return `<tr>
+      <td>${g.date}</td>
+      <td>${g.opponent}</td>
+      <td class="center">${g.loc}</td>
+      <td class="center" style="${resultClass(g.result)};font-weight:700">${g.result} ${g.teamScore}-${g.oppScore}</td>
+      <td class="center mono">${g.goals || '-'}</td>
+      <td class="center mono">${g.assists || '-'}</td>
+      <td class="center mono" style="${ptsStyle}">${g.pts || '-'}</td>
+      <td class="center mono" style="${pimStyle}">${g.pim || '-'}</td>
+    </tr>`;
+  }).join('');
+
+  // Opponent breakdown rows
+  const oppRows = Object.entries(byOpp).sort((a,b) => b[1].pts - a[1].pts).map(([opp, s]) => {
+    return `<tr>
+      <td>${opp}</td>
+      <td class="center mono">${s.gp}</td>
+      <td class="center mono">${s.g}</td>
+      <td class="center mono">${s.a}</td>
+      <td class="center mono" style="font-weight:700;color:var(--accent)">${s.pts}</td>
+      <td class="center mono">${(s.pts/s.gp).toFixed(2)}</td>
+      <td class="center mono" style="${s.pim > 0 ? 'color:var(--yellow)' : ''}">${s.pim}</td>
+    </tr>`;
+  }).join('');
+
+  // Penalty histogram bars
+  const penEntries = Object.entries(penByCodes).sort((a,b) => b[1] - a[1]);
+  const maxPenCount = penEntries.length ? penEntries[0][1] : 1;
+  const penBars = penEntries.map(([code, count]) => {
+    const pct = (count / maxPenCount) * 100;
+    const name = PENALTY_NAMES[code] || code;
+    return `<div class="bar-row">
+      <span class="bar-label">${code}</span>
+      <div class="bar-track">
+        <div class="bar-fill yellow" style="width:${pct}%"></div><span class="bar-text-outside">${count}x ${name}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Period scoring mini chart
+  const maxPeriodVal = Math.max(...Object.values(goalsByPeriod), ...Object.values(assistsByPeriod), 1);
+  const periodChart = [1, 2, 3].map(p => {
+    const gH = (goalsByPeriod[p] / maxPeriodVal) * 80;
+    const aH = (assistsByPeriod[p] / maxPeriodVal) * 80;
+    return `<div class="period-bar-group">
+      <div class="period-bar-pair">
+        <div class="period-bar gf" style="height:${gH}px"><span class="bar-val">${goalsByPeriod[p]}</span></div>
+        <div class="period-bar ga" style="height:${aH}px;background:linear-gradient(180deg, var(--purple), rgba(167,139,250,0.4))"><span class="bar-val" style="color:var(--purple)">${assistsByPeriod[p]}</span></div>
+      </div>
+      <span class="period-bar-label">P${p}</span>
+    </div>`;
+  }).join('');
+
+  // Point streak visualization (last 15 games or all)
+  const streakDots = gameLog.slice(-20).map(g => {
+    const color = g.pts > 0 ? (g.pts >= 2 ? 'var(--accent)' : 'var(--green)') : 'var(--border)';
+    const size = g.pts >= 3 ? '14px' : g.pts >= 2 ? '12px' : '10px';
+    const title = `${g.date} vs ${g.opponent}: ${g.goals}G ${g.assists}A`;
+    return `<div title="${title}" style="width:${size};height:${size};border-radius:50%;background:${color};flex-shrink:0;cursor:help"></div>`;
+  }).join('');
+
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+        <div style="width:56px;height:56px;border-radius:12px;background:${isEagles ? 'var(--accent-dim)' : 'var(--card-hover)'};border:1px solid ${isEagles ? 'rgba(56,189,248,0.3)' : 'var(--border)'};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${isEagles ? 'var(--accent)' : 'var(--text)'}">#${playerNumber}</div>
+        <div>
+          <div style="font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif">${toTitleCase(playerName)}</div>
+          <div style="font-size:13px;color:var(--text-muted)">${teamName} &bull; ${playerPos === 'G' ? 'Goaltender' : 'Skater'}</div>
+        </div>
+      </div>
+
+      <div class="stat-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:12px;margin-bottom:16px">
+        <div class="mini-stat"><div class="mini-val">${gp}</div><div class="mini-label">GP</div></div>
+        <div class="mini-stat"><div class="mini-val">${totalG}</div><div class="mini-label">Goals</div></div>
+        <div class="mini-stat"><div class="mini-val">${totalA}</div><div class="mini-label">Assists</div></div>
+        <div class="mini-stat" style="border-color:rgba(56,189,248,0.3)"><div class="mini-val" style="color:var(--accent)">${totalPts}</div><div class="mini-label">Points</div></div>
+        <div class="mini-stat"><div class="mini-val">${ppg}</div><div class="mini-label">PPG</div></div>
+        <div class="mini-stat"><div class="mini-val" style="${totalPIM > 0 ? 'color:var(--yellow)' : ''}">${totalPIM}</div><div class="mini-label">PIM</div></div>
+      </div>
+
+      <div class="stat-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px">
+        <div class="mini-stat"><div class="mini-val">${longestPtStreak}</div><div class="mini-label">Longest Point Streak</div></div>
+        <div class="mini-stat"><div class="mini-val">${longestGStreak}</div><div class="mini-label">Longest Goal Streak</div></div>
+        <div class="mini-stat"><div class="mini-val">${multiPtGames}</div><div class="mini-label">Multi-Point Games</div></div>
+        <div class="mini-stat"><div class="mini-val">${hatTricks}</div><div class="mini-label">Hat Tricks</div></div>
+        ${ppGoals > 0 ? `<div class="mini-stat"><div class="mini-val">${ppGoals}</div><div class="mini-label">PP Goals</div></div>` : ''}
+        ${shGoals > 0 ? `<div class="mini-stat"><div class="mini-val">${shGoals}</div><div class="mini-label">SH Goals</div></div>` : ''}
+        ${currentStreak > 1 ? `<div class="mini-stat" style="border-color:rgba(52,211,153,0.3)"><div class="mini-val" style="color:var(--green)">${currentStreak}</div><div class="mini-label">Current ${currentStreakType === 'point' ? 'Point' : 'Goal'} Streak</div></div>` : ''}
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="card">
+        <div class="card-title">Recent Form (last ${Math.min(20, gameLog.length)} games)</div>
+        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:8px 0">${streakDots}</div>
+        <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text-dim)">
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent);vertical-align:middle"></span> 2+ pts</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--green);vertical-align:middle"></span> 1 pt</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--border);vertical-align:middle"></span> 0 pts</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Points by Period</div>
+        <div class="period-breakdown" style="height:140px">
+          ${periodChart}
+        </div>
+        <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text-dim);justify-content:center">
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent);vertical-align:middle"></span> Goals</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--purple);vertical-align:middle"></span> Assists</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="card">
+        <div class="card-title">Home vs Away</div>
+        <table>
+          <thead><tr><th></th><th class="center">GP</th><th class="center">G</th><th class="center">A</th><th class="center">PTS</th><th class="center">PPG</th><th class="center">PIM</th></tr></thead>
+          <tbody>
+            <tr><td>Home</td><td class="center mono">${homeSplit.gp}</td><td class="center mono">${homeSplit.g}</td><td class="center mono">${homeSplit.a}</td><td class="center mono" style="font-weight:700">${homeSplit.pts}</td><td class="center mono">${homeSplit.gp > 0 ? (homeSplit.pts/homeSplit.gp).toFixed(2) : '-'}</td><td class="center mono">${homeSplit.pim}</td></tr>
+            <tr><td>Away</td><td class="center mono">${awaySplit.gp}</td><td class="center mono">${awaySplit.g}</td><td class="center mono">${awaySplit.a}</td><td class="center mono" style="font-weight:700">${awaySplit.pts}</td><td class="center mono">${awaySplit.gp > 0 ? (awaySplit.pts/awaySplit.gp).toFixed(2) : '-'}</td><td class="center mono">${awaySplit.pim}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Penalty Breakdown${totalPIM > 0 ? ` (${totalPIM} PIM)` : ''}</div>
+        ${penBars ? `<div class="bar-chart">${penBars}</div>` : '<div style="color:var(--text-dim);font-size:13px;padding:16px 0">No penalties this season</div>'}
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Performance by Opponent</div>
+      <table>
+        <thead><tr><th>Opponent</th><th class="center">GP</th><th class="center">G</th><th class="center">A</th><th class="center">PTS</th><th class="center">PPG</th><th class="center">PIM</th></tr></thead>
+        <tbody>${oppRows}</tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Game Log</div>
+      <div class="table-wrap" style="max-height:400px;overflow-y:auto">
+        <table>
+          <thead><tr><th>Date</th><th>Opponent</th><th class="center">Loc</th><th class="center">Result</th><th class="center">G</th><th class="center">A</th><th class="center">PTS</th><th class="center">PIM</th></tr></thead>
+          <tbody>${gameLogRows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function openPlayerProfile(playerName, teamName) {
+  openModal(buildPlayerProfile(playerName, teamName));
+}
 
 // Build all player stats across all games
 function buildPlayerStats(games) {
@@ -1412,7 +1749,7 @@ function renderStatsTable(allStats, teamFilter, searchTerm) {
   const rows = filtered.map(p => {
     const isEagles = p.team === TEAM;
     return `<tr class="${isEagles ? 'eagles-row' : ''}">
-      <td style="font-weight:600">${toTitleCase(p.name)}</td>
+      <td style="font-weight:600"><span class="player-link" data-player="${p.name}" data-team="${p.team}">${toTitleCase(p.name)}</span></td>
       <td>${p.team}${isEagles ? ' <span style="color:var(--accent);font-size:10px">&#9733;</span>' : ''}</td>
       <td style="font-family:'IBM Plex Mono',monospace">${p.number || '-'}</td>
       <td>${p.position === 'G' ? '<span style="color:var(--accent)">G</span>' : ''}</td>
@@ -1801,6 +2138,12 @@ async function init() {
             statsSortDir = (col === 'name' || col === 'team' || col === 'position') ? 1 : -1;
           }
           refreshStats();
+        });
+      });
+      // Wire up player profile links
+      statsContainer.querySelectorAll('.player-link').forEach(el => {
+        el.addEventListener('click', () => {
+          openPlayerProfile(el.dataset.player, el.dataset.team);
         });
       });
     }
