@@ -3412,31 +3412,6 @@ function renderHighlights(games) {
     });
   }
 
-  // --- Most PIM in a Game (by an Eagle) ---
-  let topPIM = null;
-  eaglesGames.forEach(g => {
-    const side = eaglesSide(g);
-    const playerPIM = {};
-    g[side].penalties.forEach(p => {
-      const key = p.player;
-      if (!playerPIM[key]) playerPIM[key] = { name: p.player, num: p.number, pim: 0, pens: 0, game: g };
-      playerPIM[key].pim += (typeof p.minutes === 'number' ? p.minutes : parseInt(p.minutes) || 0);
-      playerPIM[key].pens++;
-    });
-    Object.values(playerPIM).forEach(p => {
-      if (!topPIM || p.pim > topPIM.pim) topPIM = p;
-    });
-  });
-  if (topPIM) {
-    highlights.push({
-      icon: '&#128676;', label: 'Most PIM in a Game',
-      player: toTC(topPIM.name), number: topPIM.num,
-      value: topPIM.pim + ' PIM (' + topPIM.pens + ' penalty' + (topPIM.pens > 1 ? 'ies' : '') + ')',
-      detail: 'vs ' + opponent(topPIM.game),
-      date: fmtDate(topPIM.game)
-    });
-  }
-
   // Render cards
   const cards = highlights.map(h => {
     const numStr = h.number && !String(h.number).startsWith('#') ? '#' + h.number : (h.number || '');
