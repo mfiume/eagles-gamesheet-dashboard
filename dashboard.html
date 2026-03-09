@@ -1841,44 +1841,52 @@ function renderGamesheet(game) {
 
       <div class="gamesheet-section scoring-full">
         <h3>Scoring Summary</h3>
-        ${allGoals.length > 0 ? (() => {
-          const tlW = 780, tlH = 140, tlPad = 80, tlMid = tlH / 2;
+        ${(() => {
+          const allPens = [];
+          homeSide.penalties.forEach(p => allPens.push({ ...p, side: 'home' }));
+          visSide.penalties.forEach(p => allPens.push({ ...p, side: 'visitor' }));
+          if (allGoals.length === 0 && allPens.length === 0) return '';
+
+          const tlW = 780, tlH = 180, tlPad = 80, tlMid = 70;
+          const penZone = tlH - 30; // y region for penalties below goals
           const periodW = (tlW - tlPad * 2) / 3;
           const periodMins = 12;
+
+          function timeToX(period, time) {
+            const parts = time.split(':');
+            const mins = parseInt(parts[0]);
+            const secs = parseInt(parts[1]) || 0;
+            const elapsed = periodMins - mins - secs / 60;
+            return tlPad + (period - 1) * periodW + (elapsed / periodMins) * periodW;
+          }
 
           // Period dividers and labels
           let tlSvg = '';
           for (let p = 0; p < 3; p++) {
             const x0 = tlPad + p * periodW;
-            const x1 = x0 + periodW;
-            // Period background
             tlSvg += '<rect x="' + x0 + '" y="8" width="' + periodW + '" height="' + (tlH - 16) + '" rx="4" fill="' + (p % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)') + '"/>';
-            // Period label
             tlSvg += '<text x="' + (x0 + periodW / 2) + '" y="22" fill="rgba(255,255,255,0.3)" font-size="10" text-anchor="middle" font-family="IBM Plex Mono,monospace">Period ' + (p + 1) + '</text>';
-            // Divider
             if (p > 0) tlSvg += '<line x1="' + x0 + '" y1="8" x2="' + x0 + '" y2="' + (tlH - 8) + '" stroke="rgba(255,255,255,0.15)" stroke-width="1" stroke-dasharray="3,3"/>';
           }
-          // Center line
+          // Center line (goals zone)
           tlSvg += '<line x1="' + tlPad + '" y1="' + tlMid + '" x2="' + (tlW - tlPad) + '" y2="' + tlMid + '" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>';
+          // Penalty zone separator
+          const penLineY = tlMid + 50;
+          tlSvg += '<line x1="' + tlPad + '" y1="' + penLineY + '" x2="' + (tlW - tlPad) + '" y2="' + penLineY + '" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>';
           // Team labels
           tlSvg += '<text x="' + (tlPad - 4) + '" y="' + (tlMid - 8) + '" fill="' + (homeIsEagles ? 'var(--accent)' : 'rgba(255,255,255,0.4)') + '" font-size="9" text-anchor="end" font-family="IBM Plex Mono,monospace">' + game.homeTeam.split(' ').pop() + '</text>';
           tlSvg += '<text x="' + (tlPad - 4) + '" y="' + (tlMid + 14) + '" fill="' + (!homeIsEagles && game.visitorTeam === TEAM ? 'var(--accent)' : 'rgba(255,255,255,0.4)') + '" font-size="9" text-anchor="end" font-family="IBM Plex Mono,monospace">' + game.visitorTeam.split(' ').pop() + '</text>';
+          // Penalty zone labels
+          tlSvg += '<text x="' + (tlPad - 4) + '" y="' + (penLineY + 14) + '" fill="rgba(255,255,255,0.25)" font-size="8" text-anchor="end" font-family="IBM Plex Mono,monospace">PEN</text>';
 
           // Plot goals
           let runH = 0, runV = 0;
           const homeGoalColor = homeIsEagles ? 'var(--accent)' : 'var(--red)';
           const visGoalColor = (!homeIsEagles && game.visitorTeam === TEAM) ? 'var(--accent)' : 'var(--red)';
-          // Track positions to stack goals at similar times
           const homeStack = {}, visStack = {};
           allGoals.forEach(g => {
-            const period = g.period - 1;
-            const timeParts = g.time.split(':');
-            const mins = parseInt(timeParts[0]);
-            const secs = parseInt(timeParts[1]) || 0;
-            const elapsed = periodMins - mins - secs / 60;
-            const x = tlPad + period * periodW + (elapsed / periodMins) * periodW;
+            const x = timeToX(g.period, g.time);
             const xKey = Math.round(x);
-
             if (g.side === 'home') {
               runH++;
               if (!homeStack[xKey]) homeStack[xKey] = 0;
@@ -1887,7 +1895,7 @@ function renderGamesheet(game) {
               const y = tlMid - 12 - yOff;
               const color = homeGoalColor;
               tlSvg += '<line x1="' + x + '" y1="' + tlMid + '" x2="' + x + '" y2="' + (y + 6) + '" stroke="' + color + '" stroke-width="1" opacity="0.4"/>';
-              tlSvg += '<circle cx="' + x + '" cy="' + y + '" r="6" fill="' + color + '" opacity="0.9" style="cursor:help"><title>P' + g.period + ' ' + g.time + ' — #' + g.goalScorerNumber + ' ' + g.goalScorer + (g.type ? ' (' + g.type + ')' : '') + '\\n' + runH + '-' + runV + '</title></circle>';
+              tlSvg += '<circle cx="' + x + '" cy="' + y + '" r="6" fill="' + color + '" opacity="0.9" style="cursor:help"><title>GOAL P' + g.period + ' ' + g.time + ' — #' + g.goalScorerNumber + ' ' + g.goalScorer + (g.type ? ' (' + g.type + ')' : '') + '\\n' + runH + '-' + runV + '</title></circle>';
               tlSvg += '<text x="' + x + '" y="' + (y + 3) + '" fill="white" font-size="8" text-anchor="middle" font-family="IBM Plex Mono,monospace" style="pointer-events:none">' + g.goalScorerNumber + '</text>';
             } else {
               runV++;
@@ -1897,16 +1905,59 @@ function renderGamesheet(game) {
               const y = tlMid + 12 + yOff;
               const color = visGoalColor;
               tlSvg += '<line x1="' + x + '" y1="' + tlMid + '" x2="' + x + '" y2="' + (y - 6) + '" stroke="' + color + '" stroke-width="1" opacity="0.4"/>';
-              tlSvg += '<circle cx="' + x + '" cy="' + y + '" r="6" fill="' + color + '" opacity="0.9" style="cursor:help"><title>P' + g.period + ' ' + g.time + ' — #' + g.goalScorerNumber + ' ' + g.goalScorer + (g.type ? ' (' + g.type + ')' : '') + '\\n' + runH + '-' + runV + '</title></circle>';
+              tlSvg += '<circle cx="' + x + '" cy="' + y + '" r="6" fill="' + color + '" opacity="0.9" style="cursor:help"><title>GOAL P' + g.period + ' ' + g.time + ' — #' + g.goalScorerNumber + ' ' + g.goalScorer + (g.type ? ' (' + g.type + ')' : '') + '\\n' + runH + '-' + runV + '</title></circle>';
               tlSvg += '<text x="' + x + '" y="' + (y + 3) + '" fill="white" font-size="8" text-anchor="middle" font-family="IBM Plex Mono,monospace" style="pointer-events:none">' + g.goalScorerNumber + '</text>';
             }
+          });
+
+          // Plot penalties as small squares below the penalty line
+          const homePenStack = {}, visPenStack = {};
+          allPens.forEach(p => {
+            const time = p.offTime || p.startTime;
+            if (!time || !p.period) return;
+            const x = timeToX(p.period, time);
+            const xKey = Math.round(x);
+            const isHome = p.side === 'home';
+            const stack = isHome ? homePenStack : visPenStack;
+            if (!stack[xKey]) stack[xKey] = 0;
+            const yOff = stack[xKey] * 14;
+            stack[xKey]++;
+            const y = penLineY + 8 + yOff;
+            const isEaglesPen = (isHome && homeIsEagles) || (!isHome && !homeIsEagles && game.visitorTeam === TEAM);
+            const color = isEaglesPen ? 'var(--accent)' : 'var(--red)';
+            const penName = PENALTY_NAMES[p.code] || p.code;
+            const mins = typeof p.minutes === 'number' ? p.minutes : parseInt(p.minutes) || 0;
+            tlSvg += '<rect x="' + (x - 4) + '" y="' + (y - 4) + '" width="8" height="8" rx="2" fill="' + color + '" opacity="0.7" style="cursor:help"><title>PENALTY P' + p.period + ' ' + time + ' — #' + p.number + ' ' + p.player + '\\n' + penName + ' (' + mins + ' min)</title></rect>';
+            tlSvg += '<text x="' + x + '" y="' + (y + 3) + '" fill="white" font-size="6" text-anchor="middle" font-family="IBM Plex Mono,monospace" style="pointer-events:none">' + p.number + '</text>';
+          });
+
+          // Draw penalty duration bars (time off to on)
+          allPens.forEach(p => {
+            const start = p.startTime;
+            const end = p.onTime || p.endTime;
+            if (!start || !end || !p.period) return;
+            const x1 = timeToX(p.period, start);
+            // Penalty may span into next period — clamp to same period for simplicity
+            const endParts = end.split(':');
+            const startParts = start.split(':');
+            const startElapsed = periodMins - parseInt(startParts[0]) - (parseInt(startParts[1]) || 0) / 60;
+            const endElapsed = periodMins - parseInt(endParts[0]) - (parseInt(endParts[1]) || 0) / 60;
+            if (endElapsed <= startElapsed) return; // penalty ended before start (cross-period or data issue)
+            const x2 = tlPad + (p.period - 1) * periodW + (endElapsed / periodMins) * periodW;
+            const isHome = p.side === 'home';
+            const isEaglesPen = (isHome && homeIsEagles) || (!isHome && !homeIsEagles && game.visitorTeam === TEAM);
+            const color = isEaglesPen ? 'var(--accent)' : 'var(--red)';
+            tlSvg += '<rect x="' + x1 + '" y="' + (penLineY - 3) + '" width="' + Math.max(x2 - x1, 2) + '" height="3" rx="1" fill="' + color + '" opacity="0.2"/>';
           });
 
           // Running score at end
           tlSvg += '<text x="' + (tlW - tlPad + 8) + '" y="' + (tlMid + 4) + '" fill="var(--text)" font-size="13" font-weight="700" font-family="IBM Plex Mono,monospace">' + game.homeScore + '-' + game.visitorScore + '</text>';
 
-          return '<div style="overflow-x:auto;margin-bottom:16px"><svg width="' + tlW + '" height="' + tlH + '" style="display:block;margin:0 auto">' + tlSvg + '</svg></div>';
-        })() : ''}
+          // Legend
+          const legend = '<div style="display:flex;gap:16px;font-size:10px;color:var(--text-dim);margin-top:4px"><span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--accent)"/></svg> Eagles goal</span><span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--red)"/></svg> Opponent goal</span><span><svg width="12" height="12"><rect x="2" y="2" width="8" height="8" rx="2" fill="var(--accent)" opacity="0.7"/></svg> Eagles penalty</span><span><svg width="12" height="12"><rect x="2" y="2" width="8" height="8" rx="2" fill="var(--red)" opacity="0.7"/></svg> Opponent penalty</span></div>';
+
+          return '<div style="overflow-x:auto;margin-bottom:16px"><svg width="' + tlW + '" height="' + tlH + '" style="display:block;margin:0 auto">' + tlSvg + '</svg>' + legend + '</div>';
+        })()}
         ${scoringHtml}
       </div>
 
@@ -3008,28 +3059,61 @@ function renderOfficials(games) {
   const avgPensPerGame = (totalGamePens / eaglesGames.length).toFixed(1);
   const avgPIMPerGame = (totalGamePIM / eaglesGames.length).toFixed(1);
 
-  // Referee summary table
-  const refRows = sortedRefs.map(([name, rs]) => {
-    const winPct = ((rs.w + rs.t * 0.5) / rs.gp * 100).toFixed(0);
-    const pensPerGame = (rs.totalPens / rs.gp).toFixed(1);
-    const pimPerGame = (rs.totalPIM / rs.gp).toFixed(1);
-    const eaglesPensPG = (rs.eaglesPens / rs.gp).toFixed(1);
-    const oppPensPG = (rs.oppPens / rs.gp).toFixed(1);
-    const penDiff = (rs.eaglesPens / rs.gp - rs.oppPens / rs.gp).toFixed(1);
-    const diffColor = parseFloat(penDiff) > 0.5 ? 'color:var(--red)' : parseFloat(penDiff) < -0.5 ? 'color:var(--green)' : '';
-    const pensHighlight = parseFloat(pensPerGame) > parseFloat(avgPensPerGame) * 1.3 ? 'color:var(--yellow)' : parseFloat(pensPerGame) < parseFloat(avgPensPerGame) * 0.7 ? 'color:var(--green)' : '';
+  // Referee summary data for sortable table
+  const _refTableData = sortedRefs.map(([name, rs]) => ({
+    name, gp: rs.gp, w: rs.w, l: rs.l, t: rs.t,
+    winPct: parseFloat(((rs.w + rs.t * 0.5) / rs.gp * 100).toFixed(1)),
+    pensPerGame: parseFloat((rs.totalPens / rs.gp).toFixed(1)),
+    pimPerGame: parseFloat((rs.totalPIM / rs.gp).toFixed(1)),
+    eaglesPensPG: parseFloat((rs.eaglesPens / rs.gp).toFixed(1)),
+    oppPensPG: parseFloat((rs.oppPens / rs.gp).toFixed(1)),
+    penDiff: parseFloat((rs.eaglesPens / rs.gp - rs.oppPens / rs.gp).toFixed(1))
+  }));
+  window._refTableData = _refTableData;
+  window._refAvgPens = parseFloat(avgPensPerGame);
+
+  window.sortRefTable = function(col) {
+    const tbody = document.getElementById('ref-summary-tbody');
+    if (!tbody) return;
+    const prev = tbody.dataset.sortCol;
+    const prevDir = tbody.dataset.sortDir;
+    const dir = prev === col && prevDir === 'desc' ? 'asc' : 'desc';
+    tbody.dataset.sortCol = col;
+    tbody.dataset.sortDir = dir;
+    const data = [...window._refTableData];
+    data.sort((a, b) => {
+      const av = typeof a[col] === 'string' ? a[col].toLowerCase() : a[col];
+      const bv = typeof b[col] === 'string' ? b[col].toLowerCase() : b[col];
+      return dir === 'desc' ? (bv > av ? 1 : bv < av ? -1 : 0) : (av > bv ? 1 : av < bv ? -1 : 0);
+    });
+    const avgPens = window._refAvgPens;
+    tbody.innerHTML = data.map(r => {
+      const diffColor = r.penDiff > 0.5 ? 'color:var(--red)' : r.penDiff < -0.5 ? 'color:var(--green)' : '';
+      const pensHL = r.pensPerGame > avgPens * 1.3 ? 'color:var(--yellow)' : r.pensPerGame < avgPens * 0.7 ? 'color:var(--green)' : '';
+      return '<tr><td style="font-weight:600">' + r.name + '</td><td class="center mono">' + r.gp + '</td><td class="center mono" style="color:var(--green)">' + r.w + '</td><td class="center mono" style="color:var(--red)">' + r.l + '</td><td class="center mono" style="color:var(--yellow)">' + r.t + '</td><td class="center mono" style="font-weight:700">' + r.winPct.toFixed(0) + '%</td><td class="center mono" style="' + pensHL + '">' + r.pensPerGame.toFixed(1) + '</td><td class="center mono">' + r.pimPerGame.toFixed(1) + '</td><td class="center mono">' + r.eaglesPensPG.toFixed(1) + '</td><td class="center mono">' + r.oppPensPG.toFixed(1) + '</td><td class="center mono" style="' + diffColor + ';font-weight:700">' + (r.penDiff > 0 ? '+' : '') + r.penDiff.toFixed(1) + '</td></tr>';
+    }).join('');
+    // Update header arrows
+    document.querySelectorAll('#ref-summary-thead th[data-col]').forEach(th => {
+      const arrow = th.querySelector('.sort-arrow');
+      if (arrow) arrow.textContent = th.dataset.col === col ? (dir === 'desc' ? ' ▼' : ' ▲') : '';
+    });
+  };
+
+  const refRows = _refTableData.map(r => {
+    const diffColor = r.penDiff > 0.5 ? 'color:var(--red)' : r.penDiff < -0.5 ? 'color:var(--green)' : '';
+    const pensHL = r.pensPerGame > parseFloat(avgPensPerGame) * 1.3 ? 'color:var(--yellow)' : r.pensPerGame < parseFloat(avgPensPerGame) * 0.7 ? 'color:var(--green)' : '';
     return `<tr>
-      <td style="font-weight:600">${name}</td>
-      <td class="center mono">${rs.gp}</td>
-      <td class="center mono" style="color:var(--green)">${rs.w}</td>
-      <td class="center mono" style="color:var(--red)">${rs.l}</td>
-      <td class="center mono" style="color:var(--yellow)">${rs.t}</td>
-      <td class="center mono" style="font-weight:700">${winPct}%</td>
-      <td class="center mono" style="${pensHighlight}">${pensPerGame}</td>
-      <td class="center mono">${pimPerGame}</td>
-      <td class="center mono">${eaglesPensPG}</td>
-      <td class="center mono">${oppPensPG}</td>
-      <td class="center mono" style="${diffColor};font-weight:700">${parseFloat(penDiff) > 0 ? '+' : ''}${penDiff}</td>
+      <td style="font-weight:600">${r.name}</td>
+      <td class="center mono">${r.gp}</td>
+      <td class="center mono" style="color:var(--green)">${r.w}</td>
+      <td class="center mono" style="color:var(--red)">${r.l}</td>
+      <td class="center mono" style="color:var(--yellow)">${r.t}</td>
+      <td class="center mono" style="font-weight:700">${r.winPct.toFixed(0)}%</td>
+      <td class="center mono" style="${pensHL}">${r.pensPerGame.toFixed(1)}</td>
+      <td class="center mono">${r.pimPerGame.toFixed(1)}</td>
+      <td class="center mono">${r.eaglesPensPG.toFixed(1)}</td>
+      <td class="center mono">${r.oppPensPG.toFixed(1)}</td>
+      <td class="center mono" style="${diffColor};font-weight:700">${r.penDiff > 0 ? '+' : ''}${r.penDiff.toFixed(1)}</td>
     </tr>`;
   }).join('');
 
@@ -3111,12 +3195,20 @@ function renderOfficials(games) {
           <div style="margin-bottom:12px;font-size:12px;color:var(--text-dim)">League average: ${avgPensPerGame} penalties/game, ${avgPIMPerGame} PIM/game. Pen Diff = Eagles penalties/game minus opponent penalties/game (positive = more calls against us).</div>
           <div class="table-wrap">
             <table>
-              <thead><tr>
-                <th>Referee</th><th class="center">GP</th><th class="center">W</th><th class="center">L</th><th class="center">T</th><th class="center">Win %</th>
-                <th class="center">Pens/G</th><th class="center">PIM/G</th>
-                <th class="center">Eag P/G</th><th class="center">Opp P/G</th><th class="center">Pen Diff</th>
+              <thead id="ref-summary-thead"><tr>
+                <th data-col="name" onclick="sortRefTable('name')" style="cursor:pointer">Referee<span class="sort-arrow"></span></th>
+                <th data-col="gp" onclick="sortRefTable('gp')" class="center" style="cursor:pointer">GP<span class="sort-arrow"></span></th>
+                <th data-col="w" onclick="sortRefTable('w')" class="center" style="cursor:pointer">W<span class="sort-arrow"></span></th>
+                <th data-col="l" onclick="sortRefTable('l')" class="center" style="cursor:pointer">L<span class="sort-arrow"></span></th>
+                <th data-col="t" onclick="sortRefTable('t')" class="center" style="cursor:pointer">T<span class="sort-arrow"></span></th>
+                <th data-col="winPct" onclick="sortRefTable('winPct')" class="center" style="cursor:pointer">Win %<span class="sort-arrow"></span></th>
+                <th data-col="pensPerGame" onclick="sortRefTable('pensPerGame')" class="center" style="cursor:pointer">Pens/G<span class="sort-arrow"></span></th>
+                <th data-col="pimPerGame" onclick="sortRefTable('pimPerGame')" class="center" style="cursor:pointer">PIM/G<span class="sort-arrow"></span></th>
+                <th data-col="eaglesPensPG" onclick="sortRefTable('eaglesPensPG')" class="center" style="cursor:pointer">Eag P/G<span class="sort-arrow"></span></th>
+                <th data-col="oppPensPG" onclick="sortRefTable('oppPensPG')" class="center" style="cursor:pointer">Opp P/G<span class="sort-arrow"></span></th>
+                <th data-col="penDiff" onclick="sortRefTable('penDiff')" class="center" style="cursor:pointer">Pen Diff<span class="sort-arrow"></span></th>
               </tr></thead>
-              <tbody>${refRows}</tbody>
+              <tbody id="ref-summary-tbody">${refRows}</tbody>
             </table>
           </div>
         </div>
