@@ -991,14 +991,23 @@ function formatDate(isoDate) {
 }
 
 // Tab management
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
+  if (btn) btn.classList.add('active');
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('tab-' + tabName);
+  if (panel) panel.classList.add('active');
+  history.replaceState(null, '', '#' + tabName);
+}
+
 document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    const panel = document.getElementById('tab-' + btn.dataset.tab);
-    if (panel) panel.classList.add('active');
-  });
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+window.addEventListener('hashchange', () => {
+  const tab = location.hash.replace('#', '');
+  if (tab && document.getElementById('tab-' + tab)) switchTab(tab);
 });
 
 // Modal
@@ -3845,6 +3854,12 @@ async function init() {
       statsFilter.addEventListener('change', refreshStats);
       statsSearch.addEventListener('input', refreshStats);
       refreshStats();
+    }
+
+    // Restore tab from URL hash
+    const hashTab = location.hash.replace('#', '');
+    if (hashTab && document.getElementById('tab-' + hashTab)) {
+      switchTab(hashTab);
     }
 
   } catch (err) {
