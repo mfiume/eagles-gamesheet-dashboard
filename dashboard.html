@@ -653,7 +653,7 @@ select option { background: var(--card); color: var(--text); }
 .scoring-timeline { list-style: none; }
 .scoring-timeline li {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
@@ -676,6 +676,14 @@ select option { background: var(--card); color: var(--text); }
   font-size: 12px;
   color: var(--text-dim);
   min-width: 44px;
+}
+.scoring-timeline .run-score {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+  min-width: 32px;
+  text-align: center;
 }
 .scoring-timeline .scorer { font-weight: 600; }
 .scoring-timeline .assists { color: var(--text-muted); font-size: 12px; }
@@ -1784,11 +1792,11 @@ function renderGamesheet(game) {
       scoringHtml += `<li>
         <span class="period-badge">P${g.period}</span>
         <span class="time">${g.time}</span>
-        <div>
+        <span class="run-score">${runHome}-${runVis}</span>
+        <div style="flex:1;min-width:0">
           <span class="scorer">#${g.goalScorerNumber} ${toTitleCase(g.goalScorer)}</span>${goalType}<br/>
           <span class="assists">${assists ? 'Assists: ' + assists : 'Unassisted'}</span>
         </div>
-        <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim)">${runHome}-${runVis}</span>
         <span class="team-indicator ${g.side}">${g.side === 'home' ? 'HOME' : 'VIS'}</span>
       </li>`;
     });
