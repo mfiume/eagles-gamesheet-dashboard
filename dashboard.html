@@ -991,20 +991,30 @@ function formatDate(isoDate) {
 }
 
 // Tab management
-// Tab routing — uses GitHub Pages path routing when available, hash routing as fallback
+// Tab routing — clean paths everywhere
 const TAB_NAMES = new Set(Array.from(document.querySelectorAll('.tab-btn')).map(b => b.dataset.tab));
-const IS_GITHUB_PAGES = location.hostname.endsWith('.github.io');
 
 function getActiveTab() {
-  if (IS_GITHUB_PAGES) {
-    const segments = location.pathname.split('/').filter(Boolean);
-    const last = segments.length ? segments[segments.length - 1] : null;
-    if (last && TAB_NAMES.has(last)) return last;
-  }
-  const hash = location.hash.replace('#', '');
-  if (hash && TAB_NAMES.has(hash)) return hash;
-  return null;
+  const segments = location.pathname.replace(/\.html$/, '').split('/').filter(Boolean);
+  const last = segments.length ? segments[segments.length - 1] : null;
+  return last && TAB_NAMES.has(last) ? last : null;
 }
+
+function getBasePath() {
+  let path = location.pathname;
+  // Strip tab segment if present
+  const segments = path.split('/').filter(Boolean);
+  if (segments.length && TAB_NAMES.has(segments[segments.length - 1])) {
+    segments.pop();
+  }
+  // Strip .html file if present
+  if (segments.length && segments[segments.length - 1].endsWith('.html')) {
+    segments.pop();
+  }
+  return '/' + (segments.length ? segments.join('/') + '/' : '');
+}
+
+const BASE_PATH = getBasePath();
 
 function switchTab(tabName, updateUrl) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1014,19 +1024,8 @@ function switchTab(tabName, updateUrl) {
   const panel = document.getElementById('tab-' + tabName);
   if (panel) panel.classList.add('active');
   if (updateUrl !== false) {
-    if (IS_GITHUB_PAGES) {
-      let base = location.pathname.replace(/\/[^/]*\.html$/, '/');
-      // Strip existing tab segment
-      const segments = base.split('/').filter(Boolean);
-      if (segments.length && TAB_NAMES.has(segments[segments.length - 1])) {
-        segments.pop();
-      }
-      base = '/' + segments.join('/') + '/';
-      const newPath = tabName === 'overview' ? base : base + tabName;
-      history.pushState({ tab: tabName }, '', newPath);
-    } else {
-      history.pushState({ tab: tabName }, '', tabName === 'overview' ? location.pathname : location.pathname.replace(/\#.*/, '') + '#' + tabName);
-    }
+    const newPath = tabName === 'overview' ? BASE_PATH : BASE_PATH + tabName;
+    history.pushState({ tab: tabName }, '', newPath);
   }
 }
 
@@ -1035,15 +1034,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 window.addEventListener('popstate', () => {
-  const tab = getActiveTab();
-  switchTab(tab || 'overview', false);
-});
-
-window.addEventListener('hashchange', () => {
-  if (!IS_GITHUB_PAGES) {
-    const tab = getActiveTab();
-    if (tab) switchTab(tab, false);
-  }
+  switchTab(getActiveTab() || 'overview', false);
 });
 
 // Modal
