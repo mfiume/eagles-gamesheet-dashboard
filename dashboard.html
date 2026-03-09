@@ -991,23 +991,35 @@ function formatDate(isoDate) {
 }
 
 // Tab management
-function switchTab(tabName) {
+// Detect base path (e.g. /eagles-gamesheet-dashboard/ on GitHub Pages, or / locally)
+const BASE_PATH = location.pathname.replace(/\/[^/]*$/, '/').replace(/\/+$/, '/');
+
+function getTabFromPath() {
+  const path = location.pathname.replace(BASE_PATH, '').replace(/^\/+|\/+$/g, '');
+  return path || null;
+}
+
+function switchTab(tabName, pushState) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   const btn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
   if (btn) btn.classList.add('active');
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   const panel = document.getElementById('tab-' + tabName);
   if (panel) panel.classList.add('active');
-  history.replaceState(null, '', '#' + tabName);
+  const newPath = tabName === 'overview' ? BASE_PATH : BASE_PATH + tabName;
+  if (pushState !== false) {
+    history.pushState({ tab: tabName }, '', newPath);
+  }
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
 
-window.addEventListener('hashchange', () => {
-  const tab = location.hash.replace('#', '');
-  if (tab && document.getElementById('tab-' + tab)) switchTab(tab);
+window.addEventListener('popstate', () => {
+  const tab = getTabFromPath();
+  if (tab && document.getElementById('tab-' + tab)) switchTab(tab, false);
+  else switchTab('overview', false);
 });
 
 // Modal
@@ -3856,10 +3868,10 @@ async function init() {
       refreshStats();
     }
 
-    // Restore tab from URL hash
-    const hashTab = location.hash.replace('#', '');
-    if (hashTab && document.getElementById('tab-' + hashTab)) {
-      switchTab(hashTab);
+    // Restore tab from URL path
+    const urlTab = getTabFromPath();
+    if (urlTab && document.getElementById('tab-' + urlTab)) {
+      switchTab(urlTab, false);
     }
 
   } catch (err) {
