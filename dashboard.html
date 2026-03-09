@@ -991,42 +991,42 @@ function formatDate(isoDate) {
 }
 
 // Tab management
-// Tab names used for URL routing
+// Tab routing — uses GitHub Pages path routing when available, hash routing as fallback
 const TAB_NAMES = new Set(Array.from(document.querySelectorAll('.tab-btn')).map(b => b.dataset.tab));
+const IS_GITHUB_PAGES = location.hostname.endsWith('.github.io');
 
-function getTabFromPath() {
-  // Last non-empty segment of the path, ignoring .html extensions
-  const segments = location.pathname.replace(/\.html$/, '').split('/').filter(Boolean);
-  const last = segments.length ? segments[segments.length - 1] : null;
-  return last && TAB_NAMES.has(last) ? last : null;
-}
-
-// Derive base path by stripping the tab segment (if present) from current pathname
-function getBasePath() {
-  const tab = getTabFromPath();
-  if (tab) {
-    return location.pathname.substring(0, location.pathname.lastIndexOf(tab));
+function getActiveTab() {
+  if (IS_GITHUB_PAGES) {
+    const segments = location.pathname.split('/').filter(Boolean);
+    const last = segments.length ? segments[segments.length - 1] : null;
+    if (last && TAB_NAMES.has(last)) return last;
   }
-  // No tab in path — the current pathname IS the base
-  let base = location.pathname;
-  // Strip trailing index.html / dashboard.html if present
-  base = base.replace(/\/[^/]*\.html$/, '/');
-  if (!base.endsWith('/')) base += '/';
-  return base;
+  const hash = location.hash.replace('#', '');
+  if (hash && TAB_NAMES.has(hash)) return hash;
+  return null;
 }
 
-const BASE_PATH = getBasePath();
-
-function switchTab(tabName, pushState) {
+function switchTab(tabName, updateUrl) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   const btn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
   if (btn) btn.classList.add('active');
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   const panel = document.getElementById('tab-' + tabName);
   if (panel) panel.classList.add('active');
-  const newPath = tabName === 'overview' ? BASE_PATH : BASE_PATH + tabName;
-  if (pushState !== false) {
-    history.pushState({ tab: tabName }, '', newPath);
+  if (updateUrl !== false) {
+    if (IS_GITHUB_PAGES) {
+      let base = location.pathname.replace(/\/[^/]*\.html$/, '/');
+      // Strip existing tab segment
+      const segments = base.split('/').filter(Boolean);
+      if (segments.length && TAB_NAMES.has(segments[segments.length - 1])) {
+        segments.pop();
+      }
+      base = '/' + segments.join('/') + '/';
+      const newPath = tabName === 'overview' ? base : base + tabName;
+      history.pushState({ tab: tabName }, '', newPath);
+    } else {
+      history.pushState({ tab: tabName }, '', tabName === 'overview' ? location.pathname : location.pathname.replace(/\#.*/, '') + '#' + tabName);
+    }
   }
 }
 
@@ -1035,9 +1035,15 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 window.addEventListener('popstate', () => {
-  const tab = getTabFromPath();
-  if (tab && document.getElementById('tab-' + tab)) switchTab(tab, false);
-  else switchTab('overview', false);
+  const tab = getActiveTab();
+  switchTab(tab || 'overview', false);
+});
+
+window.addEventListener('hashchange', () => {
+  if (!IS_GITHUB_PAGES) {
+    const tab = getActiveTab();
+    if (tab) switchTab(tab, false);
+  }
 });
 
 // Modal
@@ -3886,9 +3892,9 @@ async function init() {
       refreshStats();
     }
 
-    // Restore tab from URL path
-    const urlTab = getTabFromPath();
-    if (urlTab && document.getElementById('tab-' + urlTab)) {
+    // Restore tab from URL
+    const urlTab = getActiveTab();
+    if (urlTab) {
       switchTab(urlTab, false);
     }
 
