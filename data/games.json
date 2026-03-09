@@ -4,7 +4,7 @@
     "division": "Under 10 AA",
     "season": "2025-2026",
     "totalGames": 37,
-    "generatedAt": "2026-03-08T12:20:48.219Z"
+    "generatedAt": "2026-03-09T00:21:57.383Z"
   },
   "games": [
     {
@@ -387,7 +387,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_12-Oct-2025",
@@ -846,7 +847,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_14-Oct-2025",
@@ -1261,7 +1263,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_21-Oct-2025",
@@ -1648,7 +1651,8 @@
             "type": "START"
           }
         ]
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_30-Oct-2025",
@@ -2035,7 +2039,8 @@
             "type": "START"
           }
         ]
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_02-Nov-2025",
@@ -2446,7 +2451,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_06-Nov-2025",
@@ -2839,7 +2845,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_09-Nov-2025",
@@ -3283,7 +3290,8 @@
         ],
         "scoring": [],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_11-Nov-2025",
@@ -3689,7 +3697,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_16-Nov-2025",
@@ -4151,7 +4160,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_21-Nov-2025",
@@ -4574,7 +4584,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_23-Nov-2025",
@@ -4987,7 +4998,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_28-Nov-2025",
@@ -5407,7 +5419,8 @@
             "type": "START"
           }
         ]
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_30-Nov-2025",
@@ -5896,7 +5909,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_01-Dec-2025",
@@ -6321,7 +6335,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_07-Dec-2025",
@@ -6700,7 +6715,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_12-Dec-2025",
@@ -7106,7 +7122,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_14-Dec-2025",
@@ -7619,7 +7636,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_15-Dec-2025",
@@ -8025,7 +8043,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_21-Dec-2025",
@@ -8504,7 +8523,8 @@
         ],
         "scoring": [],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "VINCENT HICKS"
     },
     {
       "id": "GameReport_09-Jan-2026",
@@ -8980,7 +9000,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_11-Jan-2026",
@@ -9422,7 +9443,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "VINCENT HICKS"
     },
     {
       "id": "GameReport_13-Jan-2026",
@@ -9847,7 +9869,8 @@
             "type": "START"
           }
         ]
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_20-Jan-2026",
@@ -10294,7 +10317,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "VINCENT HICKS"
     },
     {
       "id": "GameReport_23-Jan-2026",
@@ -10751,7 +10775,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_30-Jan-2026",
@@ -11344,7 +11369,8 @@
             "type": "START"
           }
         ]
-      }
+      },
+      "eaglesStarter": "VINCENT HICKS"
     },
     {
       "id": "GameReport_01-Feb-2026",
@@ -11856,7 +11882,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_05-Feb-2026",
@@ -12292,7 +12319,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "VINCENT HICKS"
     },
     {
       "id": "GameReport_08-Feb-2026",
@@ -12726,7 +12754,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_13-Feb-2026",
@@ -13254,7 +13283,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "VINCENT HICKS"
     },
     {
       "id": "GameReport_15-Feb-2026",
@@ -13663,7 +13693,8 @@
             "type": "START"
           }
         ]
-      }
+      },
+      "eaglesStarter": "VINCENT HICKS"
     },
     {
       "id": "GameReport_17-Feb-2026",
@@ -14108,7 +14139,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_22-Feb-2026",
@@ -14586,7 +14618,8 @@
         ],
         "scoring": [],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "VINCENT HICKS"
     },
     {
       "id": "GameReport_24-Feb-2026",
@@ -15011,7 +15044,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_26-Feb-2026",
@@ -15405,7 +15439,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "VINCENT HICKS"
     },
     {
       "id": "GameReport_01-Mar-2026",
@@ -15804,7 +15839,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     },
     {
       "id": "GameReport_03-Mar-2026",
@@ -16247,7 +16283,8 @@
           }
         ],
         "goalieEvents": []
-      }
+      },
+      "eaglesStarter": "GEORGIA BONNER"
     }
   ]
 }

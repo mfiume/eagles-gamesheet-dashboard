@@ -1279,14 +1279,17 @@ function buildGoalieProfile(playerName, teamName) {
     const oppScore = side === 'home' ? g.visitorScore : g.homeScore;
     const result = teamScore > oppScore ? 'W' : teamScore < oppScore ? 'L' : 'T';
 
-    // Check if this goalie was the confirmed starter (from goalieEvents)
-    const goalieEvents = sideData.goalieEvents || [];
-    const wasStarter = goalieEvents.some(e => e.goalie === playerName && e.type === 'START');
-    // Check if OTHER goalie on same team was the confirmed starter
-    const otherGoalieStarted = goalieEvents.some(e => e.goalie !== playerName && e.type === 'START');
-
-    // Determine if likely played: started, or no start info and only goalie, or no start info
-    const started = wasStarter ? 'confirmed' : otherGoalieStarted ? 'backup' : 'unknown';
+    // Determine starter status using eaglesStarter assignment data
+    let started = 'unknown';
+    if (isEagles && g.eaglesStarter) {
+      started = g.eaglesStarter === playerName ? 'confirmed' : 'backup';
+    } else {
+      // For non-Eagles goalies, use goalieEvents
+      const goalieEvents = sideData.goalieEvents || [];
+      const wasStarter = goalieEvents.some(e => e.goalie === playerName && e.type === 'START');
+      const otherGoalieStarted = goalieEvents.some(e => e.goalie !== playerName && e.type === 'START');
+      started = wasStarter ? 'confirmed' : otherGoalieStarted ? 'backup' : 'unknown';
+    }
 
     // Goals against = opponent scoring events
     const goalsAgainst = g[oppSide].scoring.length;
@@ -1326,55 +1329,59 @@ function buildGoalieProfile(playerName, teamName) {
 
   gameLog.sort((a, b) => a.isoDate.localeCompare(b.isoDate));
 
-  const gp = gameLog.length;
+  const gpDressed = gameLog.length;
   const confirmedStarts = gameLog.filter(g => g.started === 'confirmed').length;
   const backupGames = gameLog.filter(g => g.started === 'backup').length;
 
-  // For stats, use all games dressed (since we often can't confirm starter)
-  const totalGA = gameLog.reduce((s, g) => s + g.goalsAgainst, 0);
+  // For Eagles goalies with assignment data, only count games they actually played
+  const hasAssignments = isEagles && gameLog.some(g => g.started !== 'unknown');
+  const statsLog = hasAssignments ? gameLog.filter(g => g.started === 'confirmed') : gameLog;
+  const gp = statsLog.length;
+
+  const totalGA = statsLog.reduce((s, g) => s + g.goalsAgainst, 0);
   const gaa = gp > 0 ? (totalGA / gp).toFixed(2) : '0.00';
-  const shutouts = gameLog.filter(g => g.goalsAgainst === 0).length;
-  const wins = gameLog.filter(g => g.result === 'W').length;
-  const losses = gameLog.filter(g => g.result === 'L').length;
-  const ties = gameLog.filter(g => g.result === 'T').length;
+  const shutouts = statsLog.filter(g => g.goalsAgainst === 0).length;
+  const wins = statsLog.filter(g => g.result === 'W').length;
+  const losses = statsLog.filter(g => g.result === 'L').length;
+  const ties = statsLog.filter(g => g.result === 'T').length;
   const winPct = gp > 0 ? ((wins + ties * 0.5) / gp * 100).toFixed(1) : '0.0';
-  const totalAssists = gameLog.reduce((s, g) => s + g.assists, 0);
-  const totalPIM = gameLog.reduce((s, g) => s + g.pim, 0);
+  const totalAssists = statsLog.reduce((s, g) => s + g.assists, 0);
+  const totalPIM = statsLog.reduce((s, g) => s + g.pim, 0);
 
   // GA by period totals
-  const gaP1 = gameLog.reduce((s, g) => s + g.gaByPeriod[1], 0);
-  const gaP2 = gameLog.reduce((s, g) => s + g.gaByPeriod[2], 0);
-  const gaP3 = gameLog.reduce((s, g) => s + g.gaByPeriod[3], 0);
+  const gaP1 = statsLog.reduce((s, g) => s + g.gaByPeriod[1], 0);
+  const gaP2 = statsLog.reduce((s, g) => s + g.gaByPeriod[2], 0);
+  const gaP3 = statsLog.reduce((s, g) => s + g.gaByPeriod[3], 0);
   const maxPeriodGA = Math.max(gaP1, gaP2, gaP3, 1);
 
-  // Win/Loss streaks
+  // Win/Loss streaks (use statsLog for accurate per-goalie streaks)
   let longestWStreak = 0, curWStreak = 0;
   let longestUnbeaten = 0, curUnbeaten = 0;
-  gameLog.forEach(g => {
+  statsLog.forEach(g => {
     if (g.result === 'W') { curWStreak++; longestWStreak = Math.max(longestWStreak, curWStreak); } else { curWStreak = 0; }
     if (g.result !== 'L') { curUnbeaten++; longestUnbeaten = Math.max(longestUnbeaten, curUnbeaten); } else { curUnbeaten = 0; }
   });
 
   // Current streak
   let currentStreak = 0, currentStreakType = '';
-  if (gameLog.length > 0) {
-    const last = gameLog[gameLog.length - 1].result;
+  if (statsLog.length > 0) {
+    const last = statsLog[statsLog.length - 1].result;
     currentStreakType = last;
-    for (let i = gameLog.length - 1; i >= 0; i--) {
-      if (gameLog[i].result === last) currentStreak++;
+    for (let i = statsLog.length - 1; i >= 0; i--) {
+      if (statsLog[i].result === last) currentStreak++;
       else break;
     }
   }
 
   // Consecutive shutout streak
   let longestSOStreak = 0, curSOStreak = 0;
-  gameLog.forEach(g => {
+  statsLog.forEach(g => {
     if (g.goalsAgainst === 0) { curSOStreak++; longestSOStreak = Math.max(longestSOStreak, curSOStreak); } else { curSOStreak = 0; }
   });
 
   // Home vs Away
-  const homeGames = gameLog.filter(g => g.loc === 'Home');
-  const awayGames = gameLog.filter(g => g.loc === 'Away');
+  const homeGames = statsLog.filter(g => g.loc === 'Home');
+  const awayGames = statsLog.filter(g => g.loc === 'Away');
   const homeSplit = {
     gp: homeGames.length,
     w: homeGames.filter(g => g.result === 'W').length,
@@ -1396,7 +1403,7 @@ function buildGoalieProfile(playerName, teamName) {
 
   // Performance by opponent
   const byOpp = {};
-  gameLog.forEach(g => {
+  statsLog.forEach(g => {
     if (!byOpp[g.opponent]) byOpp[g.opponent] = { gp: 0, w: 0, l: 0, t: 0, ga: 0, so: 0 };
     byOpp[g.opponent].gp++;
     if (g.result === 'W') byOpp[g.opponent].w++;
@@ -1408,7 +1415,7 @@ function buildGoalieProfile(playerName, teamName) {
 
   // GA distribution histogram
   const gaDistribution = {};
-  gameLog.forEach(g => {
+  statsLog.forEach(g => {
     gaDistribution[g.goalsAgainst] = (gaDistribution[g.goalsAgainst] || 0) + 1;
   });
   const maxGADist = Math.max(...Object.values(gaDistribution), 1);
@@ -1437,7 +1444,7 @@ function buildGoalieProfile(playerName, teamName) {
   }).join('');
 
   // Recent form dots (W/L/T)
-  const formDots = gameLog.slice(-20).map(g => {
+  const formDots = statsLog.slice(-20).map(g => {
     const color = g.result === 'W' ? 'var(--green)' : g.result === 'L' ? 'var(--red)' : 'var(--yellow)';
     const title = `${g.date} vs ${g.opponent}: ${g.result} ${g.teamScore}-${g.oppScore} (${g.goalsAgainst} GA)`;
     return `<div title="${title}" style="width:12px;height:12px;border-radius:50%;background:${color};flex-shrink:0;cursor:help"></div>`;
@@ -1488,7 +1495,8 @@ function buildGoalieProfile(playerName, teamName) {
       </div>
 
       <div class="stat-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:12px;margin-bottom:16px">
-        <div class="mini-stat"><div class="mini-val">${gp}</div><div class="mini-label">Games Dressed</div></div>
+        <div class="mini-stat"><div class="mini-val">${gp}</div><div class="mini-label">${hasAssignments ? 'Games Played' : 'Games Dressed'}</div></div>
+        ${hasAssignments && gpDressed !== gp ? `<div class="mini-stat"><div class="mini-val">${gpDressed}</div><div class="mini-label">Games Dressed</div></div>` : ''}
         <div class="mini-stat" style="border-color:rgba(52,211,153,0.3)"><div class="mini-val" style="color:var(--green)">${wins}</div><div class="mini-label">Wins</div></div>
         <div class="mini-stat"><div class="mini-val" style="color:var(--red)">${losses}</div><div class="mini-label">Losses</div></div>
         <div class="mini-stat"><div class="mini-val" style="color:var(--yellow)">${ties}</div><div class="mini-label">Ties</div></div>
@@ -1511,7 +1519,7 @@ function buildGoalieProfile(playerName, teamName) {
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div class="card">
-        <div class="card-title">Recent Form (last ${Math.min(20, gameLog.length)} games)</div>
+        <div class="card-title">Recent Form (last ${Math.min(20, statsLog.length)} games${hasAssignments ? ' played' : ''})</div>
         <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;padding:8px 0">${formDots}</div>
         <div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text-dim)">
           <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--green);vertical-align:middle"></span> Win</span>
@@ -1543,7 +1551,7 @@ function buildGoalieProfile(playerName, teamName) {
             <tr><td>Away</td><td class="center mono">${awaySplit.gp}</td><td class="center mono">${awaySplit.w}</td><td class="center mono">${awaySplit.l}</td><td class="center mono">${awaySplit.t}</td><td class="center mono">${awaySplit.ga}</td><td class="center mono">${awaySplit.gaa}</td><td class="center mono">${awaySplit.so > 0 ? '<span style="color:var(--green)">' + awaySplit.so + '</span>' : '-'}</td></tr>
           </tbody>
         </table>
-        <div style="margin-top:8px;font-size:11px;color:var(--text-dim)">Note: Stats reflect all games dressed. Two goalies often dress per game; saves/shots data is not available from gamesheets.</div>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-dim)">${hasAssignments ? 'Note: Stats reflect only games played (not backup appearances). Saves/shots data is not available from gamesheets.' : 'Note: Stats reflect all games dressed. Two goalies often dress per game; saves/shots data is not available from gamesheets.'}</div>
       </div>
     </div>
 
