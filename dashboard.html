@@ -835,6 +835,67 @@ footer {
   border-top: 1px solid var(--border);
   margin-top: 40px;
 }
+
+/* Highlights */
+.highlights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
+}
+.highlight-card {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.highlight-icon {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: center;
+  padding-top: 2px;
+}
+.highlight-body { flex: 1; min-width: 0; }
+.highlight-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.highlight-player {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.highlight-num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.highlight-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--yellow);
+  margin-bottom: 4px;
+}
+.highlight-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.highlight-date {
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
 </style>
 </head>
 <body>
@@ -852,6 +913,7 @@ footer {
     <button class="tab-btn" data-tab="playerstats">Player Stats</button>
     <button class="tab-btn" data-tab="scouting">Scouting Report</button>
     <button class="tab-btn" data-tab="analytics">Advanced Analytics</button>
+    <button class="tab-btn" data-tab="highlights">Highlights</button>
     <button class="tab-btn" data-tab="officials">Officials</button>
   </div>
 
@@ -3011,7 +3073,397 @@ function renderAnalytics(games) {
   `;
 }
 
-// Tab 7: Officials
+// Tab 7: Highlights
+function renderHighlights(games) {
+  const eaglesGames = games.filter(g => g.homeTeam === TEAM || g.visitorTeam === TEAM);
+
+  function toTC(s) { return s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '); }
+  function opponent(g) { return g.homeTeam === TEAM ? g.visitorTeam : g.homeTeam; }
+  function eaglesSide(g) { return g.homeTeam === TEAM ? 'home' : 'visitor'; }
+  function eaglesScore(g) { const s = eaglesSide(g); return s === 'home' ? g.homeScore : g.visitorScore; }
+  function oppScore(g) { const s = eaglesSide(g); return s === 'home' ? g.visitorScore : g.homeScore; }
+  function fmtDate(g) { return g.isoDate; }
+  function clockToElapsed(time, periodMins) {
+    const p = time.split(':');
+    return periodMins * 60 - parseInt(p[0]) * 60 - (parseInt(p[1]) || 0);
+  }
+  function fmtElapsed(secs) {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  const highlights = [];
+
+  // --- Fastest Goal ---
+  let fastestGoal = null;
+  eaglesGames.forEach(g => {
+    const side = eaglesSide(g);
+    g[side].scoring.forEach(goal => {
+      if (goal.period === 1) {
+        const elapsed = clockToElapsed(goal.time, 12);
+        if (!fastestGoal || elapsed < fastestGoal.elapsed) {
+          fastestGoal = { goal, elapsed, game: g };
+        }
+      }
+    });
+  });
+  if (fastestGoal) {
+    highlights.push({
+      icon: '&#9889;', label: 'Fastest Goal',
+      player: toTC(fastestGoal.goal.goalScorer), number: fastestGoal.goal.goalScorerNumber,
+      value: fmtElapsed(fastestGoal.elapsed) + ' into the game',
+      detail: 'P1 at ' + fastestGoal.goal.time + ' vs ' + opponent(fastestGoal.game),
+      date: fmtDate(fastestGoal.game)
+    });
+  }
+
+  // --- Fastest Two Consecutive Eagles Goals ---
+  let fastestTwo = null;
+  eaglesGames.forEach(g => {
+    const side = eaglesSide(g);
+    const goals = [...g[side].scoring].sort((a, b) => {
+      if (a.period !== b.period) return a.period - b.period;
+      const aE = clockToElapsed(a.time, 12), bE = clockToElapsed(b.time, 12);
+      return aE - bE;
+    });
+    for (let i = 1; i < goals.length; i++) {
+      const prev = goals[i - 1], cur = goals[i];
+      const prevSecs = (prev.period - 1) * 12 * 60 + clockToElapsed(prev.time, 12);
+      const curSecs = (cur.period - 1) * 12 * 60 + clockToElapsed(cur.time, 12);
+      const diff = curSecs - prevSecs;
+      if (diff > 0 && (!fastestTwo || diff < fastestTwo.diff)) {
+        fastestTwo = { diff, prev, cur, game: g };
+      }
+    }
+  });
+  if (fastestTwo) {
+    highlights.push({
+      icon: '&#128293;', label: 'Fastest Two Goals',
+      player: toTC(fastestTwo.prev.goalScorer) + ' & ' + toTC(fastestTwo.cur.goalScorer),
+      number: '#' + fastestTwo.prev.goalScorerNumber + ' & #' + fastestTwo.cur.goalScorerNumber,
+      value: fmtElapsed(fastestTwo.diff) + ' apart',
+      detail: 'vs ' + opponent(fastestTwo.game),
+      date: fmtDate(fastestTwo.game)
+    });
+  }
+
+  // --- Hat Tricks (show all unique players) ---
+  const hatTricks = [];
+  eaglesGames.forEach(g => {
+    const side = eaglesSide(g);
+    const counts = {};
+    g[side].scoring.forEach(goal => {
+      const key = goal.goalScorer;
+      if (!counts[key]) counts[key] = { name: goal.goalScorer, num: goal.goalScorerNumber, count: 0, game: g };
+      counts[key].count++;
+    });
+    Object.values(counts).filter(c => c.count >= 3).forEach(c => hatTricks.push(c));
+  });
+  // Group by player
+  const htByPlayer = {};
+  hatTricks.forEach(ht => {
+    if (!htByPlayer[ht.name]) htByPlayer[ht.name] = { name: ht.name, num: ht.num, count: 0, best: 0, bestGame: null };
+    htByPlayer[ht.name].count++;
+    if (ht.count > htByPlayer[ht.name].best) { htByPlayer[ht.name].best = ht.count; htByPlayer[ht.name].bestGame = ht.game; }
+  });
+  const htPlayers = Object.values(htByPlayer).sort((a, b) => b.count - a.count);
+  if (htPlayers.length) {
+    highlights.push({
+      icon: '&#127946;', label: 'Hat Trick Club',
+      player: hatTricks.length + ' hat tricks by ' + htPlayers.length + ' players',
+      number: '',
+      value: htPlayers.map(p => toTC(p.name) + ' (' + p.count + ')').join(', '),
+      detail: 'Most in one game: ' + htPlayers[0].best + ' goals by ' + toTC(htPlayers[0].name),
+      date: ''
+    });
+  }
+
+  // --- Most Goals in a Single Game (pick the best non-Gauthier if possible, else best overall) ---
+  const playerGameGoals = [];
+  eaglesGames.forEach(g => {
+    const side = eaglesSide(g);
+    const counts = {};
+    g[side].scoring.forEach(goal => {
+      const key = goal.goalScorer;
+      if (!counts[key]) counts[key] = { name: goal.goalScorer, num: goal.goalScorerNumber, count: 0, game: g };
+      counts[key].count++;
+    });
+    Object.values(counts).forEach(c => playerGameGoals.push(c));
+  });
+  playerGameGoals.sort((a, b) => b.count - a.count);
+  // Show top scorer, and if top is repeated, show a different player too
+  const topGoalGame = playerGameGoals[0];
+  if (topGoalGame) {
+    highlights.push({
+      icon: '&#127880;', label: 'Most Goals in a Game',
+      player: toTC(topGoalGame.name), number: topGoalGame.num,
+      value: topGoalGame.count + ' goals',
+      detail: 'vs ' + opponent(topGoalGame.game) + ' (' + eaglesScore(topGoalGame.game) + '-' + oppScore(topGoalGame.game) + ')',
+      date: fmtDate(topGoalGame.game)
+    });
+  }
+  // Find best game by a different player
+  const altGoalGame = playerGameGoals.find(p => p.name !== topGoalGame?.name && p.count >= 3);
+  if (altGoalGame) {
+    highlights.push({
+      icon: '&#127881;', label: 'Best Game (Runner-Up)',
+      player: toTC(altGoalGame.name), number: altGoalGame.num,
+      value: altGoalGame.count + ' goals',
+      detail: 'vs ' + opponent(altGoalGame.game) + ' (' + eaglesScore(altGoalGame.game) + '-' + oppScore(altGoalGame.game) + ')',
+      date: fmtDate(altGoalGame.game)
+    });
+  }
+
+  // --- Most Points in a Game (find best non-duplicate of goals leader) ---
+  const playerGamePts = [];
+  eaglesGames.forEach(g => {
+    const side = eaglesSide(g);
+    const pts = {};
+    g[side].scoring.forEach(goal => {
+      const gKey = goal.goalScorer;
+      if (!pts[gKey]) pts[gKey] = { name: goal.goalScorer, num: goal.goalScorerNumber, g: 0, a: 0, game: g };
+      pts[gKey].g++;
+      [goal.assist1, goal.assist2].filter(Boolean).forEach(assist => {
+        if (!pts[assist]) pts[assist] = { name: assist, num: '', g: 0, a: 0, game: g };
+        pts[assist].a++;
+      });
+    });
+    Object.values(pts).forEach(p => playerGamePts.push({ ...p, pts: p.g + p.a }));
+  });
+  playerGamePts.sort((a, b) => b.pts - a.pts);
+  // Find best points game that's different from the goals leader if possible
+  const topPtsPlayer = playerGamePts[0];
+  const altPtsPlayer = playerGamePts.find(p => p.name !== topGoalGame?.name);
+  const ptsHighlight = altPtsPlayer && altPtsPlayer.pts >= topPtsPlayer.pts - 1 ? altPtsPlayer : topPtsPlayer;
+  if (ptsHighlight) {
+    highlights.push({
+      icon: '&#11088;', label: 'Most Points in a Game',
+      player: toTC(ptsHighlight.name), number: ptsHighlight.num,
+      value: ptsHighlight.pts + ' pts (' + ptsHighlight.g + 'G + ' + ptsHighlight.a + 'A)',
+      detail: 'vs ' + opponent(ptsHighlight.game) + ' (' + eaglesScore(ptsHighlight.game) + '-' + oppScore(ptsHighlight.game) + ')',
+      date: fmtDate(ptsHighlight.game)
+    });
+  }
+
+  // --- Most Assists in a Single Game ---
+  const playerGameAssists = [];
+  eaglesGames.forEach(g => {
+    const side = eaglesSide(g);
+    const counts = {};
+    g[side].scoring.forEach(goal => {
+      [goal.assist1, goal.assist2].filter(Boolean).forEach(a => {
+        if (!counts[a]) counts[a] = { name: a, count: 0, game: g };
+        counts[a].count++;
+      });
+    });
+    Object.values(counts).forEach(c => playerGameAssists.push(c));
+  });
+  playerGameAssists.sort((a, b) => b.count - a.count);
+  const topAssistGame = playerGameAssists[0];
+  if (topAssistGame) {
+    highlights.push({
+      icon: '&#129309;', label: 'Most Assists in a Game',
+      player: toTC(topAssistGame.name), number: '',
+      value: topAssistGame.count + ' assists',
+      detail: 'vs ' + opponent(topAssistGame.game) + ' (' + eaglesScore(topAssistGame.game) + '-' + oppScore(topAssistGame.game) + ')',
+      date: fmtDate(topAssistGame.game)
+    });
+  }
+
+  // --- Shutouts ---
+  const shutouts = eaglesGames.filter(g => oppScore(g) === 0);
+  if (shutouts.length) {
+    const goalies = {};
+    shutouts.forEach(g => {
+      const starter = g.eaglesStarter || 'Unknown';
+      if (!goalies[starter]) goalies[starter] = [];
+      goalies[starter].push(g);
+    });
+    const goalieList = Object.entries(goalies).map(([name, gms]) => toTC(name) + ' (' + gms.length + ')').join(', ');
+    highlights.push({
+      icon: '&#129345;', label: 'Shutouts',
+      player: goalieList, number: '',
+      value: shutouts.length + ' total shutouts',
+      detail: shutouts.map(g => eaglesScore(g) + '-0 vs ' + opponent(g)).join(', '),
+      date: ''
+    });
+  }
+
+  // --- Biggest Win ---
+  let biggestWin = null;
+  eaglesGames.forEach(g => {
+    const diff = eaglesScore(g) - oppScore(g);
+    if (!biggestWin || diff > biggestWin.diff) biggestWin = { game: g, diff };
+  });
+  if (biggestWin && biggestWin.diff > 0) {
+    highlights.push({
+      icon: '&#128165;', label: 'Biggest Blowout',
+      player: opponent(biggestWin.game), number: '',
+      value: eaglesScore(biggestWin.game) + '-' + oppScore(biggestWin.game) + ' (' + biggestWin.diff + ' goal margin)',
+      detail: (eaglesSide(biggestWin.game) === 'home' ? 'Home' : 'Away'),
+      date: fmtDate(biggestWin.game)
+    });
+  }
+
+  // --- Longest Win Streak ---
+  let maxStreak = 0, curStreak = 0, streakEnd = 0;
+  eaglesGames.forEach((g, i) => {
+    const es = eaglesScore(g), os = oppScore(g);
+    if (es > os) { curStreak++; if (curStreak > maxStreak) { maxStreak = curStreak; streakEnd = i; } }
+    else curStreak = 0;
+  });
+  if (maxStreak >= 2) {
+    const streakGames = eaglesGames.slice(streakEnd - maxStreak + 1, streakEnd + 1);
+    highlights.push({
+      icon: '&#128170;', label: 'Longest Win Streak',
+      player: maxStreak + ' consecutive wins', number: '',
+      value: streakGames.map(g => eaglesScore(g) + '-' + oppScore(g) + ' vs ' + opponent(g).split(' ').pop()).join(', '),
+      detail: '',
+      date: fmtDate(streakGames[0]) + ' to ' + fmtDate(streakGames[streakGames.length - 1])
+    });
+  }
+
+  // --- Most Goals in a Single Period ---
+  let bestPeriod = null;
+  eaglesGames.forEach(g => {
+    const side = eaglesSide(g);
+    const byP = {};
+    g[side].scoring.forEach(goal => { byP[goal.period] = (byP[goal.period] || 0) + 1; });
+    Object.entries(byP).forEach(([p, c]) => {
+      if (!bestPeriod || c > bestPeriod.count) bestPeriod = { period: p, count: c, game: g };
+    });
+  });
+  if (bestPeriod) {
+    highlights.push({
+      icon: '&#127754;', label: 'Most Goals in a Period',
+      player: bestPeriod.count + ' goals in P' + bestPeriod.period, number: '',
+      value: 'vs ' + opponent(bestPeriod.game) + ' (' + eaglesScore(bestPeriod.game) + '-' + oppScore(bestPeriod.game) + ')',
+      detail: '',
+      date: fmtDate(bestPeriod.game)
+    });
+  }
+
+  // --- Iron Men (played all games) ---
+  const gamesPlayed = {};
+  eaglesGames.forEach(g => {
+    const side = eaglesSide(g);
+    g[side].roster.filter(p => p.status === 'active' && p.position !== 'G').forEach(p => {
+      if (!gamesPlayed[p.name]) gamesPlayed[p.name] = 0;
+      gamesPlayed[p.name]++;
+    });
+  });
+  const totalGames = eaglesGames.length;
+  const ironMen = Object.entries(gamesPlayed).filter(([_, gp]) => gp === totalGames).map(([n]) => toTC(n));
+  if (ironMen.length) {
+    highlights.push({
+      icon: '&#129470;', label: 'Iron Men',
+      player: ironMen.length + ' players suited up for all ' + totalGames + ' games', number: '',
+      value: ironMen.join(', '),
+      detail: '',
+      date: ''
+    });
+  }
+
+  // --- Unique Scorers ---
+  const uniqueScorers = new Set();
+  eaglesGames.forEach(g => {
+    const side = eaglesSide(g);
+    g[side].scoring.forEach(goal => uniqueScorers.add(goal.goalScorer));
+  });
+  highlights.push({
+    icon: '&#127919;', label: 'Scoring Depth',
+    player: uniqueScorers.size + ' different goal scorers', number: '',
+    value: [...uniqueScorers].map(s => toTC(s)).sort().join(', '),
+    detail: '',
+    date: ''
+  });
+
+  // --- First & Last Goal of the Season ---
+  const allGoals = [];
+  eaglesGames.forEach(g => {
+    const side = eaglesSide(g);
+    g[side].scoring.forEach(goal => allGoals.push({ goal, game: g }));
+  });
+  if (allGoals.length >= 2) {
+    const first = allGoals[0], last = allGoals[allGoals.length - 1];
+    highlights.push({
+      icon: '&#127942;', label: 'Season Bookends',
+      player: 'First goal: ' + toTC(first.goal.goalScorer) + ' #' + first.goal.goalScorerNumber, number: '',
+      value: 'Last goal: ' + toTC(last.goal.goalScorer) + ' #' + last.goal.goalScorerNumber,
+      detail: first.game.isoDate + ' vs ' + opponent(first.game) + '  /  ' + last.game.isoDate + ' vs ' + opponent(last.game),
+      date: ''
+    });
+  }
+
+  // --- Highest Scoring Game ---
+  let highestGame = null;
+  eaglesGames.forEach(g => {
+    const total = g.homeScore + g.visitorScore;
+    if (!highestGame || total > highestGame.total) highestGame = { game: g, total };
+  });
+  if (highestGame) {
+    highlights.push({
+      icon: '&#128200;', label: 'Highest-Scoring Game',
+      player: highestGame.total + ' combined goals', number: '',
+      value: eaglesScore(highestGame.game) + '-' + oppScore(highestGame.game) + ' vs ' + opponent(highestGame.game),
+      detail: '',
+      date: fmtDate(highestGame.game)
+    });
+  }
+
+  // --- Most PIM in a Game (by an Eagle) ---
+  let topPIM = null;
+  eaglesGames.forEach(g => {
+    const side = eaglesSide(g);
+    const playerPIM = {};
+    g[side].penalties.forEach(p => {
+      const key = p.player;
+      if (!playerPIM[key]) playerPIM[key] = { name: p.player, num: p.number, pim: 0, pens: 0, game: g };
+      playerPIM[key].pim += (typeof p.minutes === 'number' ? p.minutes : parseInt(p.minutes) || 0);
+      playerPIM[key].pens++;
+    });
+    Object.values(playerPIM).forEach(p => {
+      if (!topPIM || p.pim > topPIM.pim) topPIM = p;
+    });
+  });
+  if (topPIM) {
+    highlights.push({
+      icon: '&#128676;', label: 'Most PIM in a Game',
+      player: toTC(topPIM.name), number: topPIM.num,
+      value: topPIM.pim + ' PIM (' + topPIM.pens + ' penalty' + (topPIM.pens > 1 ? 'ies' : '') + ')',
+      detail: 'vs ' + opponent(topPIM.game),
+      date: fmtDate(topPIM.game)
+    });
+  }
+
+  // Render cards
+  const cards = highlights.map(h => {
+    const numStr = h.number && !String(h.number).startsWith('#') ? '#' + h.number : (h.number || '');
+    return '<div class="highlight-card">' +
+      '<div class="highlight-icon">' + h.icon + '</div>' +
+      '<div class="highlight-body">' +
+        '<div class="highlight-label">' + h.label + '</div>' +
+        '<div class="highlight-player">' + h.player + (numStr ? ' <span class="highlight-num">' + numStr + '</span>' : '') + '</div>' +
+        '<div class="highlight-value">' + h.value + '</div>' +
+        (h.detail ? '<div class="highlight-detail">' + h.detail + '</div>' : '') +
+        (h.date ? '<div class="highlight-date">' + h.date + '</div>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  return '<div class="tab-panel" id="tab-highlights">' +
+    '<div class="analytics-grid">' +
+      '<div class="card full-width">' +
+        '<div class="card-title">Season Highlights</div>' +
+        '<div style="margin-bottom:16px;font-size:12px;color:var(--text-dim)">Notable achievements and records from the ' + totalGames + '-game season.</div>' +
+        '<div class="highlights-grid">' + cards + '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+// Tab 8: Officials
 function renderOfficials(games) {
   const eaglesGames = games.filter(g => g.homeTeam === TEAM || g.visitorTeam === TEAM);
 
@@ -3278,6 +3730,7 @@ async function init() {
       renderPlayerStats(allGames) +
       renderScouting(allGames) +
       renderAnalytics(allGames) +
+      renderHighlights(allGames) +
       renderOfficials(allGames);
 
     // Wire up game log clicks
