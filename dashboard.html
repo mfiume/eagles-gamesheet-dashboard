@@ -3396,19 +3396,94 @@ function renderHighlights(games) {
     });
   }
 
-  // --- Highest Scoring Game ---
-  let highestGame = null;
+  // --- Biggest Comeback ---
+  let biggestComeback = null;
   eaglesGames.forEach(g => {
-    const total = g.homeScore + g.visitorScore;
-    if (!highestGame || total > highestGame.total) highestGame = { game: g, total };
+    const side = eaglesSide(g);
+    const result = eaglesScore(g) > oppScore(g) ? 'W' : eaglesScore(g) < oppScore(g) ? 'L' : 'T';
+    if (result !== 'W') return;
+    const allG = [];
+    g.home.scoring.forEach(goal => allG.push({ ...goal, team: 'home' }));
+    g.visitor.scoring.forEach(goal => allG.push({ ...goal, team: 'visitor' }));
+    allG.sort((a, b) => {
+      if (a.period !== b.period) return a.period - b.period;
+      const aP = a.time.split(':'), bP = b.time.split(':');
+      return (parseInt(bP[0]) * 60 + (parseInt(bP[1]) || 0)) - (parseInt(aP[0]) * 60 + (parseInt(aP[1]) || 0));
+    });
+    let eG = 0, oG = 0, maxDef = 0;
+    allG.forEach(goal => {
+      if (goal.team === side) eG++; else oG++;
+      if (oG - eG > maxDef) maxDef = oG - eG;
+    });
+    if (maxDef > 0 && (!biggestComeback || maxDef > biggestComeback.deficit)) {
+      biggestComeback = { game: g, deficit: maxDef };
+    }
   });
-  if (highestGame) {
+  if (biggestComeback) {
     highlights.push({
-      icon: '&#128200;', label: 'Highest-Scoring Game',
-      player: highestGame.total + ' combined goals', number: '',
-      value: eaglesScore(highestGame.game) + '-' + oppScore(highestGame.game) + ' vs ' + opponent(highestGame.game),
-      detail: '',
-      date: fmtDate(highestGame.game)
+      icon: '&#128293;', label: 'Biggest Comeback Win',
+      player: 'Overcame a ' + biggestComeback.deficit + '-goal deficit', number: '',
+      value: eaglesScore(biggestComeback.game) + '-' + oppScore(biggestComeback.game) + ' vs ' + opponent(biggestComeback.game),
+      detail: 'Trailed by ' + biggestComeback.deficit + ' goals and came back to win',
+      date: fmtDate(biggestComeback.game)
+    });
+  }
+
+  // --- Clutch Finish (most goals in final minutes of P3 to win) ---
+  let bestClutch = null;
+  eaglesGames.forEach(g => {
+    const side = eaglesSide(g);
+    const result = eaglesScore(g) > oppScore(g) ? 'W' : eaglesScore(g) < oppScore(g) ? 'L' : 'T';
+    if (result !== 'W') return;
+    const lateGoals = g[side].scoring.filter(goal => {
+      if (goal.period !== 3) return false;
+      const mins = parseInt(goal.time.split(':')[0]);
+      return mins < 4; // last 4 minutes
+    });
+    if (lateGoals.length >= 2) {
+      // Check if these goals were needed to win (score was close before the run)
+      const allG = [];
+      g.home.scoring.forEach(goal => allG.push({ ...goal, team: 'home' }));
+      g.visitor.scoring.forEach(goal => allG.push({ ...goal, team: 'visitor' }));
+      allG.sort((a, b) => {
+        if (a.period !== b.period) return a.period - b.period;
+        const aP = a.time.split(':'), bP = b.time.split(':');
+        return (parseInt(bP[0]) * 60 + (parseInt(bP[1]) || 0)) - (parseInt(aP[0]) * 60 + (parseInt(aP[1]) || 0));
+      });
+      // Find score just before the first late goal
+      let eG = 0, oG = 0;
+      const firstLateTime = lateGoals.reduce((min, lg) => {
+        const s = parseInt(lg.time.split(':')[0]) * 60 + (parseInt(lg.time.split(':')[1]) || 0);
+        return s < min ? s : min;
+      }, 9999);
+      allG.forEach(goal => {
+        if (goal.period < 3 || (goal.period === 3 && parseInt(goal.time.split(':')[0]) * 60 + (parseInt(goal.time.split(':')[1]) || 0) > firstLateTime)) {
+          if (goal.team === side) eG++; else oG++;
+        }
+      });
+      const trailingOrTied = oG >= eG;
+      if (trailingOrTied && (!bestClutch || lateGoals.length > bestClutch.count || (lateGoals.length === bestClutch.count && (oG - eG) > bestClutch.deficit))) {
+        const firstTime = lateGoals.reduce((max, lg) => { const t = lg.time; const s = parseInt(t.split(':')[0])*60+(parseInt(t.split(':')[1])||0); return s > max ? s : max; }, 0);
+        const lastTime = lateGoals.reduce((min, lg) => { const t = lg.time; const s = parseInt(t.split(':')[0])*60+(parseInt(t.split(':')[1])||0); return s < min ? s : min; }, 9999);
+        const span = firstTime - lastTime;
+        const spanMin = Math.floor(span / 60);
+        const spanSec = span % 60;
+        bestClutch = {
+          game: g, count: lateGoals.length, goals: lateGoals, deficit: oG - eG,
+          scoreBefore: eG + '-' + oG,
+          spanStr: spanMin + ':' + String(spanSec).padStart(2, '0')
+        };
+      }
+    }
+  });
+  if (bestClutch) {
+    const scorers = bestClutch.goals.map(lg => toTC(lg.goalScorer)).join(', ');
+    highlights.push({
+      icon: '&#9200;', label: 'Clutch Finish',
+      player: bestClutch.count + ' goals in the final ' + bestClutch.spanStr, number: '',
+      value: (bestClutch.deficit > 0 ? 'Trailing ' : 'Tied ') + bestClutch.scoreBefore + ', won ' + eaglesScore(bestClutch.game) + '-' + oppScore(bestClutch.game),
+      detail: 'Scorers: ' + scorers + ' vs ' + opponent(bestClutch.game),
+      date: fmtDate(bestClutch.game)
     });
   }
 
