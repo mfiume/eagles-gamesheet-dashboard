@@ -1,6 +1,6 @@
 {
   "_comment": "Manual goalie start assignments for Toronto Eagles. Edit this file to override auto-detected assignments. Use the game's 'id' field (e.g. 'GameReport_06-Oct-2025') as the key.",
-  "_rules": "Games 1-18 (before Dec 15): Georgia only. Games 19-37: alternating, Georgia played last game. Confirmed starters from gamesheet data override the alternation pattern.",
+  "_rules": "Games 1-19 (before Dec 21): Georgia only. Games 20-37: strict alternation every game, Georgia played last game (Mar 3). Work backwards from last game to determine pattern.",
   "assignments": {
     "GameReport_06-Oct-2025": "GEORGIA BONNER",
     "GameReport_12-Oct-2025": "GEORGIA BONNER",
@@ -32,12 +32,12 @@
     "GameReport_05-Feb-2026": "VINCENT HICKS",
     "GameReport_08-Feb-2026": "GEORGIA BONNER",
     "GameReport_13-Feb-2026": "VINCENT HICKS",
-    "GameReport_15-Feb-2026": "VINCENT HICKS",
-    "GameReport_17-Feb-2026": "GEORGIA BONNER",
-    "GameReport_22-Feb-2026": "VINCENT HICKS",
-    "GameReport_24-Feb-2026": "GEORGIA BONNER",
-    "GameReport_26-Feb-2026": "VINCENT HICKS",
-    "GameReport_01-Mar-2026": "GEORGIA BONNER",
+    "GameReport_15-Feb-2026": "GEORGIA BONNER",
+    "GameReport_17-Feb-2026": "VINCENT HICKS",
+    "GameReport_22-Feb-2026": "GEORGIA BONNER",
+    "GameReport_24-Feb-2026": "VINCENT HICKS",
+    "GameReport_26-Feb-2026": "GEORGIA BONNER",
+    "GameReport_01-Mar-2026": "VINCENT HICKS",
     "GameReport_03-Mar-2026": "GEORGIA BONNER"
   }
 }
