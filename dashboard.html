@@ -2514,23 +2514,31 @@ function renderAnalytics(games) {
     }
   });
 
-  // Correlation: skater count vs result
+  // Correlation: skater count vs result + GF/GA + per-period
   const countResults = {};
-  skaterCounts.forEach(g => {
-    if (!countResults[g.count]) countResults[g.count] = { w: 0, l: 0, t: 0, total: 0 };
-    countResults[g.count].total++;
-  });
   eaglesGames.forEach((g, i) => {
-    const r = getResult(g);
     const c = skaterCounts[i].count;
+    if (!countResults[c]) countResults[c] = { w: 0, l: 0, t: 0, total: 0, gf: 0, ga: 0, gfP: {1:0,2:0,3:0}, gaP: {1:0,2:0,3:0} };
+    countResults[c].total++;
+    const r = getResult(g);
     if (r === 'W') countResults[c].w++;
     else if (r === 'L') countResults[c].l++;
     else countResults[c].t++;
+    const ourSide = getEaglesSide(g);
+    const theirSide = ourSide === 'home' ? 'visitor' : 'home';
+    countResults[c].gf += ourSide === 'home' ? g.homeScore : g.visitorScore;
+    countResults[c].ga += ourSide === 'home' ? g.visitorScore : g.homeScore;
+    g[ourSide].scoring.forEach(s => { if (countResults[c].gfP[s.period] !== undefined) countResults[c].gfP[s.period]++; });
+    g[theirSide].scoring.forEach(s => { if (countResults[c].gaP[s.period] !== undefined) countResults[c].gaP[s.period]++; });
   });
   const countResultRows = Object.entries(countResults)
     .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
     .map(([count, s]) => {
       const winPct = s.total > 0 ? ((s.w + s.t * 0.5) / s.total * 100).toFixed(0) : '-';
+      const gfPG = (s.gf / s.total).toFixed(1);
+      const gaPG = (s.ga / s.total).toFixed(1);
+      const diff = (s.gf / s.total - s.ga / s.total).toFixed(1);
+      const diffColor = parseFloat(diff) > 0 ? 'color:var(--green)' : parseFloat(diff) < 0 ? 'color:var(--red)' : '';
       return `<tr>
         <td class="center mono">${count}</td>
         <td class="center mono">${s.total}</td>
@@ -2538,8 +2546,34 @@ function renderAnalytics(games) {
         <td class="center mono" style="color:var(--red)">${s.l}</td>
         <td class="center mono" style="color:var(--yellow)">${s.t}</td>
         <td class="center mono" style="font-weight:700">${winPct}%</td>
+        <td class="center mono">${gfPG}</td>
+        <td class="center mono">${gaPG}</td>
+        <td class="center mono" style="${diffColor};font-weight:700">${parseFloat(diff) > 0 ? '+' : ''}${diff}</td>
       </tr>`;
     }).join('');
+
+  // Per-period GF/GA by roster size (stamina analysis)
+  const sortedCounts = Object.entries(countResults).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+  const staminaRows = sortedCounts.map(([count, s]) => {
+    const p1Diff = s.gfP[1] - s.gaP[1];
+    const p2Diff = s.gfP[2] - s.gaP[2];
+    const p3Diff = s.gfP[3] - s.gaP[3];
+    const diffStyle = v => v > 0 ? 'color:var(--green)' : v < 0 ? 'color:var(--red)' : '';
+    const fmt = v => (v > 0 ? '+' : '') + v;
+    return `<tr>
+      <td class="center mono">${count}</td>
+      <td class="center mono">${s.total}</td>
+      <td class="center mono">${s.gfP[1]}</td>
+      <td class="center mono">${s.gaP[1]}</td>
+      <td class="center mono" style="${diffStyle(p1Diff)};font-weight:700">${fmt(p1Diff)}</td>
+      <td class="center mono">${s.gfP[2]}</td>
+      <td class="center mono">${s.gaP[2]}</td>
+      <td class="center mono" style="${diffStyle(p2Diff)};font-weight:700">${fmt(p2Diff)}</td>
+      <td class="center mono">${s.gfP[3]}</td>
+      <td class="center mono">${s.gaP[3]}</td>
+      <td class="center mono" style="${diffStyle(p3Diff)};font-weight:700">${fmt(p3Diff)}</td>
+    </tr>`;
+  }).join('');
 
   return `
     <div class="tab-panel" id="tab-analytics">
@@ -2594,9 +2628,9 @@ function renderAnalytics(games) {
               <div class="bar-chart">${skaterDistBars}</div>
             </div>
             <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:8px">Win Rate by Roster Size</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:8px">Results &amp; Scoring by Roster Size</div>
               <table>
-                <thead><tr><th class="center">Skaters</th><th class="center">GP</th><th class="center">W</th><th class="center">L</th><th class="center">T</th><th class="center">Win %</th></tr></thead>
+                <thead><tr><th class="center">Skaters</th><th class="center">GP</th><th class="center">W</th><th class="center">L</th><th class="center">T</th><th class="center">Win %</th><th class="center">GF/G</th><th class="center">GA/G</th><th class="center">Diff</th></tr></thead>
                 <tbody>${countResultRows}</tbody>
               </table>
             </div>
@@ -2612,6 +2646,27 @@ function renderAnalytics(games) {
             </svg>
           </div>
           <div style="margin-top:8px;font-size:11px;color:var(--text-dim)">Game number on x-axis. Dot color: <span style="color:var(--green)">Win</span>, <span style="color:var(--red)">Loss</span>, <span style="color:var(--yellow)">Tie</span>. Dashed line = season average.</div>
+          <div style="margin-top:20px;font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:8px">Stamina Check: Goal Differential by Period &amp; Roster Size</div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th class="center" rowspan="2">Skaters</th>
+                  <th class="center" rowspan="2">GP</th>
+                  <th class="center" colspan="3" style="border-bottom:1px solid var(--border)">Period 1</th>
+                  <th class="center" colspan="3" style="border-bottom:1px solid var(--border)">Period 2</th>
+                  <th class="center" colspan="3" style="border-bottom:1px solid var(--border)">Period 3</th>
+                </tr>
+                <tr>
+                  <th class="center" style="font-size:10px">GF</th><th class="center" style="font-size:10px">GA</th><th class="center" style="font-size:10px">+/-</th>
+                  <th class="center" style="font-size:10px">GF</th><th class="center" style="font-size:10px">GA</th><th class="center" style="font-size:10px">+/-</th>
+                  <th class="center" style="font-size:10px">GF</th><th class="center" style="font-size:10px">GA</th><th class="center" style="font-size:10px">+/-</th>
+                </tr>
+              </thead>
+              <tbody>${staminaRows}</tbody>
+            </table>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text-dim)">If a shorter bench causes fatigue, expect goal differential to worsen in P3 compared to P1 for smaller roster sizes.</div>
         </div>
 
         <div class="card full-width">
