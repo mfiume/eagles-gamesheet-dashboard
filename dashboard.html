@@ -917,6 +917,7 @@ footer {
     <button class="tab-btn" data-tab="playerstats">Players</button>
     <button class="tab-btn" data-tab="scouting">Scouting</button>
     <button class="tab-btn" data-tab="analytics">Advanced Analytics</button>
+    <button class="tab-btn" data-tab="arenas">Arenas</button>
     <button class="tab-btn" data-tab="highlights">Highlights</button>
     <button class="tab-btn" data-tab="officials">Officials</button>
   </div>
@@ -3149,7 +3150,145 @@ function renderAnalytics(games) {
   `;
 }
 
-// Tab 7: Highlights
+// Tab 7: Arenas
+function renderArenas(games) {
+  const eaglesGames = games.filter(g => g.homeTeam === TEAM || g.visitorTeam === TEAM);
+
+  // Build per-arena stats
+  const arenaMap = {};
+  eaglesGames.forEach((g, idx) => {
+    const a = g.arena || 'Unknown';
+    if (!arenaMap[a]) arenaMap[a] = { gp: 0, w: 0, l: 0, t: 0, gf: 0, ga: 0, home: 0, away: 0, pf: 0, pa: 0, games: [] };
+    const s = arenaMap[a];
+    s.gp++;
+    const isHome = g.homeTeam === TEAM;
+    if (isHome) s.home++; else s.away++;
+    const es = isHome ? g.homeScore : g.visitorScore;
+    const os = isHome ? g.visitorScore : g.homeScore;
+    s.gf += es; s.ga += os;
+    if (es > os) s.w++; else if (es < os) s.l++; else s.t++;
+    const eSide = isHome ? 'home' : 'visitor';
+    const oSide = isHome ? 'visitor' : 'home';
+    s.pf += g[eSide].penalties.length;
+    s.pa += g[oSide].penalties.length;
+    s.games.push({ game: g, idx, es, os, isHome });
+  });
+
+  const arenas = Object.entries(arenaMap).sort((a, b) => b[1].gp - a[1].gp);
+
+  // Summary table
+  const tableRows = arenas.map(([name, s]) => {
+    const winPct = ((s.w + s.t * 0.5) / s.gp * 100).toFixed(0);
+    const gfa = (s.gf / s.gp).toFixed(1);
+    const gaa = (s.ga / s.gp).toFixed(1);
+    const diff = s.gf - s.ga;
+    const diffStr = (diff >= 0 ? '+' : '') + diff;
+    const diffColor = diff > 0 ? 'color:var(--green)' : diff < 0 ? 'color:var(--red)' : '';
+    const pfa = (s.pf / s.gp).toFixed(1);
+    const paa = (s.pa / s.gp).toFixed(1);
+    const homeAway = s.home + 'H / ' + s.away + 'A';
+    return '<tr>' +
+      '<td style="font-weight:600">' + name + '</td>' +
+      '<td class="center mono">' + s.gp + '</td>' +
+      '<td class="center mono" style="font-size:11px">' + homeAway + '</td>' +
+      '<td class="center mono" style="color:var(--green)">' + s.w + '</td>' +
+      '<td class="center mono" style="color:var(--red)">' + s.l + '</td>' +
+      '<td class="center mono" style="color:var(--yellow)">' + s.t + '</td>' +
+      '<td class="center mono" style="font-weight:700">' + winPct + '%</td>' +
+      '<td class="center mono">' + s.gf + '</td>' +
+      '<td class="center mono">' + s.ga + '</td>' +
+      '<td class="center mono" style="font-weight:700;' + diffColor + '">' + diffStr + '</td>' +
+      '<td class="center mono">' + gfa + '</td>' +
+      '<td class="center mono">' + gaa + '</td>' +
+      '<td class="center mono">' + pfa + '</td>' +
+      '<td class="center mono">' + paa + '</td>' +
+    '</tr>';
+  }).join('');
+
+  // Arena cards with game logs
+  const arenaCards = arenas.filter(([_, s]) => s.gp >= 2).map(([name, s]) => {
+    const winPct = ((s.w + s.t * 0.5) / s.gp * 100).toFixed(0);
+    const gfa = (s.gf / s.gp).toFixed(1);
+    const gaa = (s.ga / s.gp).toFixed(1);
+    const diff = s.gf - s.ga;
+    const diffColor = diff > 0 ? 'color:var(--green)' : diff < 0 ? 'color:var(--red)' : '';
+
+    const gameRows = s.games.map(gd => {
+      const r = gd.es > gd.os ? 'W' : gd.es < gd.os ? 'L' : 'T';
+      const rColor = r === 'W' ? 'color:var(--green)' : r === 'L' ? 'color:var(--red)' : 'color:var(--yellow)';
+      const opp = gd.isHome ? gd.game.visitorTeam : gd.game.homeTeam;
+      return '<tr>' +
+        '<td style="font-size:11px">' + gd.game.isoDate + '</td>' +
+        '<td>' + opp + '</td>' +
+        '<td class="center mono" style="' + rColor + ';font-weight:700">' + r + ' ' + gd.es + '-' + gd.os + '</td>' +
+        '<td class="center mono" style="font-size:11px">' + (gd.isHome ? 'Home' : 'Away') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    return '<div class="card" style="margin-bottom:0">' +
+      '<div class="card-title">' + name + '</div>' +
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">' +
+        '<div class="mini-stat"><div class="mini-val">' + s.gp + '</div><div class="mini-label">GP</div></div>' +
+        '<div class="mini-stat"><div class="mini-val" style="color:var(--green)">' + s.w + '</div><div class="mini-label">W</div></div>' +
+        '<div class="mini-stat"><div class="mini-val" style="color:var(--red)">' + s.l + '</div><div class="mini-label">L</div></div>' +
+        '<div class="mini-stat"><div class="mini-val" style="color:var(--yellow)">' + s.t + '</div><div class="mini-label">T</div></div>' +
+        '<div class="mini-stat"><div class="mini-val">' + winPct + '%</div><div class="mini-label">Win %</div></div>' +
+        '<div class="mini-stat"><div class="mini-val">' + gfa + '</div><div class="mini-label">GFA</div></div>' +
+        '<div class="mini-stat"><div class="mini-val">' + gaa + '</div><div class="mini-label">GAA</div></div>' +
+        '<div class="mini-stat"><div class="mini-val" style="' + diffColor + '">' + (diff >= 0 ? '+' : '') + diff + '</div><div class="mini-label">GD</div></div>' +
+      '</div>' +
+      '<div class="table-wrap" style="max-height:200px;overflow-y:auto"><table>' +
+        '<thead><tr><th>Date</th><th>Opponent</th><th class="center">Result</th><th class="center">H/A</th></tr></thead>' +
+        '<tbody>' + gameRows + '</tbody>' +
+      '</table></div>' +
+    '</div>';
+  }).join('');
+
+  // Best/worst arenas
+  const multiArenas = arenas.filter(([_, s]) => s.gp >= 2);
+  let bestArena = '', worstArena = '';
+  if (multiArenas.length) {
+    const sorted = [...multiArenas].sort((a, b) => {
+      const aPct = (a[1].w + a[1].t * 0.5) / a[1].gp;
+      const bPct = (b[1].w + b[1].t * 0.5) / b[1].gp;
+      return bPct - aPct;
+    });
+    bestArena = sorted[0][0];
+    worstArena = sorted[sorted.length - 1][0];
+  }
+
+  return `
+    <div class="tab-panel" id="tab-arenas">
+      <div class="analytics-grid">
+        <div class="card full-width">
+          <div class="card-title">Arena Summary</div>
+          <div style="margin-bottom:12px;font-size:12px;color:var(--text-dim)">${arenas.length} arenas played in across ${eaglesGames.length} games.${bestArena ? ' Best: <span style="color:var(--green);font-weight:600">' + bestArena + '</span>. Toughest: <span style="color:var(--red);font-weight:600">' + worstArena + '</span> (2+ GP).' : ''}</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Arena</th><th class="center">GP</th><th class="center">H/A</th>
+                <th class="center">W</th><th class="center">L</th><th class="center">T</th><th class="center">Win %</th>
+                <th class="center">GF</th><th class="center">GA</th><th class="center">GD</th>
+                <th class="center">GFA</th><th class="center">GAA</th>
+                <th class="center">PF/G</th><th class="center">PA/G</th>
+              </tr></thead>
+              <tbody>${tableRows}</tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card full-width">
+          <div class="card-title">Arena Profiles (2+ games)</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:16px">
+            ${arenaCards || '<div class="no-data">Not enough data for arena profiles</div>'}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Tab 8: Highlights
 function renderHighlights(games) {
   const eaglesGames = games.filter(g => g.homeTeam === TEAM || g.visitorTeam === TEAM);
 
@@ -3857,6 +3996,7 @@ async function init() {
       renderPlayerStats(allGames) +
       renderScouting(allGames) +
       renderAnalytics(allGames) +
+      renderArenas(allGames) +
       renderHighlights(allGames) +
       renderOfficials(allGames);
 
