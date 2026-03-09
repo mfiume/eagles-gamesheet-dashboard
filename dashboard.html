@@ -3176,34 +3176,60 @@ function renderArenas(games) {
 
   const arenas = Object.entries(arenaMap).sort((a, b) => b[1].gp - a[1].gp);
 
-  // Summary table
-  const tableRows = arenas.map(([name, s]) => {
-    const winPct = ((s.w + s.t * 0.5) / s.gp * 100).toFixed(0);
-    const gfa = (s.gf / s.gp).toFixed(1);
-    const gaa = (s.ga / s.gp).toFixed(1);
-    const diff = s.gf - s.ga;
-    const diffStr = (diff >= 0 ? '+' : '') + diff;
-    const diffColor = diff > 0 ? 'color:var(--green)' : diff < 0 ? 'color:var(--red)' : '';
-    const pfa = (s.pf / s.gp).toFixed(1);
-    const paa = (s.pa / s.gp).toFixed(1);
-    const homeAway = s.home + 'H / ' + s.away + 'A';
+  // Summary table data
+  const _arenaTableData = arenas.map(([name, s]) => ({
+    name, gp: s.gp, home: s.home, away: s.away, w: s.w, l: s.l, t: s.t,
+    winPct: parseFloat(((s.w + s.t * 0.5) / s.gp * 100).toFixed(1)),
+    gf: s.gf, ga: s.ga, gd: s.gf - s.ga,
+    gfa: parseFloat((s.gf / s.gp).toFixed(1)),
+    gaa: parseFloat((s.ga / s.gp).toFixed(1)),
+    pfa: parseFloat((s.pf / s.gp).toFixed(1)),
+    paa: parseFloat((s.pa / s.gp).toFixed(1))
+  }));
+  window._arenaTableData = _arenaTableData;
+
+  function renderArenaRow(r) {
+    const diffColor = r.gd > 0 ? 'color:var(--green)' : r.gd < 0 ? 'color:var(--red)' : '';
     return '<tr>' +
-      '<td style="font-weight:600">' + name + '</td>' +
-      '<td class="center mono">' + s.gp + '</td>' +
-      '<td class="center mono" style="font-size:11px">' + homeAway + '</td>' +
-      '<td class="center mono" style="color:var(--green)">' + s.w + '</td>' +
-      '<td class="center mono" style="color:var(--red)">' + s.l + '</td>' +
-      '<td class="center mono" style="color:var(--yellow)">' + s.t + '</td>' +
-      '<td class="center mono" style="font-weight:700">' + winPct + '%</td>' +
-      '<td class="center mono">' + s.gf + '</td>' +
-      '<td class="center mono">' + s.ga + '</td>' +
-      '<td class="center mono" style="font-weight:700;' + diffColor + '">' + diffStr + '</td>' +
-      '<td class="center mono">' + gfa + '</td>' +
-      '<td class="center mono">' + gaa + '</td>' +
-      '<td class="center mono">' + pfa + '</td>' +
-      '<td class="center mono">' + paa + '</td>' +
+      '<td style="font-weight:600">' + r.name + '</td>' +
+      '<td class="center mono">' + r.gp + '</td>' +
+      '<td class="center mono" style="font-size:11px">' + r.home + 'H / ' + r.away + 'A</td>' +
+      '<td class="center mono" style="color:var(--green)">' + r.w + '</td>' +
+      '<td class="center mono" style="color:var(--red)">' + r.l + '</td>' +
+      '<td class="center mono" style="color:var(--yellow)">' + r.t + '</td>' +
+      '<td class="center mono" style="font-weight:700">' + r.winPct.toFixed(0) + '%</td>' +
+      '<td class="center mono">' + r.gf + '</td>' +
+      '<td class="center mono">' + r.ga + '</td>' +
+      '<td class="center mono" style="font-weight:700;' + diffColor + '">' + (r.gd >= 0 ? '+' : '') + r.gd + '</td>' +
+      '<td class="center mono">' + r.gfa.toFixed(1) + '</td>' +
+      '<td class="center mono">' + r.gaa.toFixed(1) + '</td>' +
+      '<td class="center mono">' + r.pfa.toFixed(1) + '</td>' +
+      '<td class="center mono">' + r.paa.toFixed(1) + '</td>' +
     '</tr>';
-  }).join('');
+  }
+
+  window.sortArenaTable = function(col) {
+    const tbody = document.getElementById('arena-summary-tbody');
+    if (!tbody) return;
+    const prev = tbody.dataset.sortCol;
+    const prevDir = tbody.dataset.sortDir;
+    const dir = prev === col && prevDir === 'desc' ? 'asc' : 'desc';
+    tbody.dataset.sortCol = col;
+    tbody.dataset.sortDir = dir;
+    const data = [...window._arenaTableData];
+    data.sort((a, b) => {
+      const av = typeof a[col] === 'string' ? a[col].toLowerCase() : a[col];
+      const bv = typeof b[col] === 'string' ? b[col].toLowerCase() : b[col];
+      return dir === 'desc' ? (bv > av ? 1 : bv < av ? -1 : 0) : (av > bv ? 1 : av < bv ? -1 : 0);
+    });
+    tbody.innerHTML = data.map(renderArenaRow).join('');
+    document.querySelectorAll('#arena-summary-thead th[data-col]').forEach(th => {
+      const arrow = th.querySelector('.sort-arrow');
+      if (arrow) arrow.textContent = th.dataset.col === col ? (dir === 'desc' ? ' ▼' : ' ▲') : '';
+    });
+  };
+
+  const tableRows = _arenaTableData.map(renderArenaRow).join('');
 
   // Arena cards with game logs
   const arenaCards = arenas.filter(([_, s]) => s.gp >= 2).map(([name, s]) => {
@@ -3265,14 +3291,23 @@ function renderArenas(games) {
           <div style="margin-bottom:12px;font-size:12px;color:var(--text-dim)">${arenas.length} arenas played in across ${eaglesGames.length} games.${bestArena ? ' Best: <span style="color:var(--green);font-weight:600">' + bestArena + '</span>. Toughest: <span style="color:var(--red);font-weight:600">' + worstArena + '</span> (2+ GP).' : ''}</div>
           <div class="table-wrap">
             <table>
-              <thead><tr>
-                <th>Arena</th><th class="center">GP</th><th class="center">H/A</th>
-                <th class="center">W</th><th class="center">L</th><th class="center">T</th><th class="center">Win %</th>
-                <th class="center">GF</th><th class="center">GA</th><th class="center">GD</th>
-                <th class="center">GFA</th><th class="center">GAA</th>
-                <th class="center">PF/G</th><th class="center">PA/G</th>
+              <thead id="arena-summary-thead"><tr>
+                <th data-col="name" onclick="sortArenaTable('name')" style="cursor:pointer">Arena<span class="sort-arrow"></span></th>
+                <th data-col="gp" onclick="sortArenaTable('gp')" class="center" style="cursor:pointer">GP<span class="sort-arrow"></span></th>
+                <th class="center">H/A</th>
+                <th data-col="w" onclick="sortArenaTable('w')" class="center" style="cursor:pointer">W<span class="sort-arrow"></span></th>
+                <th data-col="l" onclick="sortArenaTable('l')" class="center" style="cursor:pointer">L<span class="sort-arrow"></span></th>
+                <th data-col="t" onclick="sortArenaTable('t')" class="center" style="cursor:pointer">T<span class="sort-arrow"></span></th>
+                <th data-col="winPct" onclick="sortArenaTable('winPct')" class="center" style="cursor:pointer">Win %<span class="sort-arrow"></span></th>
+                <th data-col="gf" onclick="sortArenaTable('gf')" class="center" style="cursor:pointer">GF<span class="sort-arrow"></span></th>
+                <th data-col="ga" onclick="sortArenaTable('ga')" class="center" style="cursor:pointer">GA<span class="sort-arrow"></span></th>
+                <th data-col="gd" onclick="sortArenaTable('gd')" class="center" style="cursor:pointer">GD<span class="sort-arrow"></span></th>
+                <th data-col="gfa" onclick="sortArenaTable('gfa')" class="center" style="cursor:pointer">GFA<span class="sort-arrow"></span></th>
+                <th data-col="gaa" onclick="sortArenaTable('gaa')" class="center" style="cursor:pointer">GAA<span class="sort-arrow"></span></th>
+                <th data-col="pfa" onclick="sortArenaTable('pfa')" class="center" style="cursor:pointer">PF/G<span class="sort-arrow"></span></th>
+                <th data-col="paa" onclick="sortArenaTable('paa')" class="center" style="cursor:pointer">PA/G<span class="sort-arrow"></span></th>
               </tr></thead>
-              <tbody>${tableRows}</tbody>
+              <tbody id="arena-summary-tbody">${tableRows}</tbody>
             </table>
           </div>
         </div>
