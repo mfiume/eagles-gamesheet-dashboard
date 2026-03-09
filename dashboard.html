@@ -962,26 +962,32 @@ function getEaglesSide(game) {
   return null;
 }
 
-// Coach/trainer kid detection — built once after data loads
+// Coach/trainer kid detection — built once after data loads, for all teams
 const COACH_KID_NAMES = new Set();
 function buildCoachKidSet(games) {
   COACH_KID_NAMES.clear();
-  const officialLastNames = new Map(); // lastName -> official full name
-  const eaglesGames = games.filter(g => g.homeTeam === TEAM || g.visitorTeam === TEAM);
-  eaglesGames.forEach(g => {
-    const side = getEaglesSide(g);
-    g[side].officials.forEach(o => {
-      const last = o.name.toUpperCase().split(' ').pop();
-      if (!officialLastNames.has(last)) officialLastNames.set(last, o.name);
+  // For each team, collect officials' last names, then match against roster
+  const teamOfficials = {}; // team -> Set of last names
+  games.forEach(g => {
+    ['home', 'visitor'].forEach(side => {
+      const team = side === 'home' ? g.homeTeam : g.visitorTeam;
+      if (!teamOfficials[team]) teamOfficials[team] = new Set();
+      g[side].officials.forEach(o => {
+        teamOfficials[team].add(o.name.toUpperCase().split(' ').pop());
+      });
     });
   });
-  eaglesGames.forEach(g => {
-    const side = getEaglesSide(g);
-    g[side].roster.forEach(p => {
-      const last = p.name.toUpperCase().split(' ').pop();
-      if (officialLastNames.has(last)) {
-        COACH_KID_NAMES.add(p.name.toUpperCase());
-      }
+  games.forEach(g => {
+    ['home', 'visitor'].forEach(side => {
+      const team = side === 'home' ? g.homeTeam : g.visitorTeam;
+      const lastNames = teamOfficials[team];
+      if (!lastNames) return;
+      g[side].roster.forEach(p => {
+        const last = p.name.toUpperCase().split(' ').pop();
+        if (lastNames.has(last)) {
+          COACH_KID_NAMES.add(p.name.toUpperCase());
+        }
+      });
     });
   });
 }
@@ -1365,7 +1371,7 @@ function buildPlayerProfile(playerName, teamName) {
       <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
         <div style="width:56px;height:56px;border-radius:12px;background:${isEagles ? 'var(--accent-dim)' : 'var(--card-hover)'};border:1px solid ${isEagles ? 'rgba(56,189,248,0.3)' : 'var(--border)'};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${isEagles ? 'var(--accent)' : 'var(--text)'}">#${playerNumber}</div>
         <div>
-          <div style="font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif">${toTitleCase(playerName)}${isEagles ? coachKidBadge(playerName) : ''}</div>
+          <div style="font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif">${toTitleCase(playerName)}${coachKidBadge(playerName)}</div>
           <div style="font-size:13px;color:var(--text-muted)">${teamName} &bull; ${playerPos === 'G' ? 'Goaltender' : 'Skater'}</div>
         </div>
       </div>
@@ -1707,7 +1713,7 @@ function buildGoalieProfile(playerName, teamName) {
       <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
         <div style="width:56px;height:56px;border-radius:12px;background:${isEagles ? 'var(--accent-dim)' : 'var(--card-hover)'};border:1px solid ${isEagles ? 'rgba(56,189,248,0.3)' : 'var(--border)'};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${isEagles ? 'var(--accent)' : 'var(--text)'}">#${playerNumber}</div>
         <div>
-          <div style="font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif">${toTitleCase(playerName)}${isEagles ? coachKidBadge(playerName) : ''}</div>
+          <div style="font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif">${toTitleCase(playerName)}${coachKidBadge(playerName)}</div>
           <div style="font-size:13px;color:var(--text-muted)">${teamName} &bull; Goaltender</div>
         </div>
       </div>
@@ -2338,7 +2344,7 @@ function renderRosterForTeam(games, teamName) {
   let tableRows = playerList.map(p => `
     <tr>
       <td style="font-family:'IBM Plex Mono',monospace;font-weight:600">${p.number || '-'}</td>
-      <td>${toTitleCase(p.name)}${teamName === TEAM ? coachKidBadge(p.name) : ''}</td>
+      <td>${toTitleCase(p.name)}${coachKidBadge(p.name)}</td>
       <td>${p.position === 'G' ? '<span style="color:var(--accent);font-weight:600">G</span>' : 'Skater'}</td>
       <td style="font-family:'IBM Plex Mono',monospace">${p.gp}</td>
     </tr>
@@ -2445,7 +2451,7 @@ function renderStatsTable(allStats, teamFilter, searchTerm) {
   const rows = filtered.map(p => {
     const isEagles = p.team === TEAM;
     return `<tr class="${isEagles ? 'eagles-row' : ''}">
-      <td style="font-weight:600"><span class="player-link" data-player="${p.name}" data-team="${p.team}">${toTitleCase(p.name)}${isEagles ? coachKidBadge(p.name) : ''}</span></td>
+      <td style="font-weight:600"><span class="player-link" data-player="${p.name}" data-team="${p.team}">${toTitleCase(p.name)}${coachKidBadge(p.name)}</span></td>
       <td>${p.team}${isEagles ? ' <span style="color:var(--accent);font-size:10px">&#9733;</span>' : ''}</td>
       <td style="font-family:'IBM Plex Mono',monospace">${p.number || '-'}</td>
       <td>${p.position === 'G' ? '<span style="color:var(--accent)">G</span>' : ''}</td>
