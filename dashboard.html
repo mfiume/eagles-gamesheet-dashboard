@@ -916,7 +916,9 @@ footer {
     <button class="tab-btn" data-tab="rosters">Rosters</button>
     <button class="tab-btn" data-tab="playerstats">Players</button>
     <button class="tab-btn" data-tab="scouting">Scouting</button>
-    <button class="tab-btn" data-tab="analytics">Advanced Analytics</button>
+    <button class="tab-btn" data-tab="standings">Standings</button>
+    <button class="tab-btn" data-tab="trends">Trends</button>
+    <button class="tab-btn" data-tab="discipline">Discipline</button>
     <button class="tab-btn" data-tab="arenas">Arenas</button>
     <button class="tab-btn" data-tab="highlights">Highlights</button>
     <button class="tab-btn" data-tab="officials">Officials</button>
@@ -994,7 +996,7 @@ function buildCoachKidSet(games) {
 }
 function coachKidBadge(playerName) {
   if (COACH_KID_NAMES.has(playerName.toUpperCase())) {
-    return ' <span title="Coach/trainer family" style="font-size:9px;opacity:0.4;cursor:help">&#11088;</span>';
+    return ' <span title="Coach/trainer family" style="color:var(--accent);font-size:10px;cursor:help">&#9733;</span>';
   }
   return '';
 }
@@ -2989,8 +2991,9 @@ function renderAnalytics(games) {
   const totalGSTrailing = lt.goalsWhenTrailing + lt.goalsAgainstWhenTrailing;
   const totalGSTied = lt.goalsWhenTied + lt.goalsAgainstWhenTied;
 
-  return `
-    <div class="tab-panel" id="tab-analytics">
+  // --- Tab: Standings ---
+  const standingsHtml = `
+    <div class="tab-panel" id="tab-standings">
       <div class="analytics-grid">
         <div class="card full-width">
           <div class="card-title">League Standings</div>
@@ -3004,6 +3007,18 @@ function renderAnalytics(games) {
           </div>
         </div>
 
+        <div class="card full-width">
+          <div class="card-title">Head-to-Head Records</div>
+          <div class="h2h-grid">${h2hCards}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // --- Tab: Trends ---
+  const trendsHtml = `
+    <div class="tab-panel" id="tab-trends">
+      <div class="analytics-grid">
         <div class="card">
           <div class="card-title">Eagles Scoring by Period</div>
           <div class="period-breakdown">${periodBars}</div>
@@ -3011,21 +3026,6 @@ function renderAnalytics(games) {
             <div class="legend-item"><span class="legend-dot gf"></span> Goals For</div>
             <div class="legend-item"><span class="legend-dot ga"></span> Goals Against</div>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Eagles Penalty Breakdown</div>
-          <div class="bar-chart">${penCodeBars || '<div class="no-data">No penalties</div>'}</div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Eagles Most Penalized Players</div>
-          <div class="bar-chart">${penPlayerBars || '<div class="no-data">No penalties</div>'}</div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">League Penalty Leaders</div>
-          <div class="bar-chart">${leaguePenBars || '<div class="no-data">No penalties</div>'}</div>
         </div>
 
         <div class="card full-width">
@@ -3141,13 +3141,33 @@ function renderAnalytics(games) {
           </div>
         </div>
 
+      </div>
+    </div>
+  `;
+
+  // --- Tab: Discipline ---
+  const disciplineHtml = `
+    <div class="tab-panel" id="tab-discipline">
+      <div class="analytics-grid">
+        <div class="card">
+          <div class="card-title">Eagles Penalty Breakdown</div>
+          <div class="bar-chart">${penCodeBars || '<div class="no-data">No penalties recorded</div>'}</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Most Penalized Eagles</div>
+          <div class="bar-chart">${penPlayerBars || '<div class="no-data">No penalties recorded</div>'}</div>
+        </div>
+
         <div class="card full-width">
-          <div class="card-title">Head-to-Head Records</div>
-          <div class="h2h-grid">${h2hCards}</div>
+          <div class="card-title">League Penalty Leaders</div>
+          <div class="bar-chart">${leaguePenBars || '<div class="no-data">No penalties recorded</div>'}</div>
         </div>
       </div>
     </div>
   `;
+
+  return standingsHtml + trendsHtml + disciplineHtml;
 }
 
 // Tab 7: Arenas
