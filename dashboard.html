@@ -2449,6 +2449,97 @@ function renderAnalytics(games) {
     </div>`;
   }).join('');
 
+  // 6. Roster size distribution (Eagles skaters per game)
+  const skaterCounts = [];
+  eaglesGames.forEach(g => {
+    const side = getEaglesSide(g);
+    const activeSkaters = g[side].roster.filter(p => p.status === 'active' && p.position !== 'G').length;
+    skaterCounts.push({ date: g.isoDate, opponent: getOpponent(g), count: activeSkaters, gameType: g.gameType });
+  });
+  skaterCounts.sort((a, b) => a.date.localeCompare(b.date));
+  const avgSkaters = skaterCounts.length > 0 ? (skaterCounts.reduce((s, g) => s + g.count, 0) / skaterCounts.length).toFixed(1) : 0;
+  const minSkaters = skaterCounts.length > 0 ? Math.min(...skaterCounts.map(g => g.count)) : 0;
+  const maxSkaters = skaterCounts.length > 0 ? Math.max(...skaterCounts.map(g => g.count)) : 0;
+  const medianSkaters = skaterCounts.length > 0 ? [...skaterCounts].sort((a, b) => a.count - b.count)[Math.floor(skaterCounts.length / 2)].count : 0;
+
+  // Distribution histogram
+  const skaterDist = {};
+  skaterCounts.forEach(g => { skaterDist[g.count] = (skaterDist[g.count] || 0) + 1; });
+  const maxDistCount = Math.max(...Object.values(skaterDist), 1);
+  const skaterDistBars = Object.entries(skaterDist)
+    .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
+    .map(([count, freq]) => {
+      const pct = (freq / maxDistCount) * 100;
+      const color = parseInt(count) >= 11 ? 'green' : parseInt(count) >= 9 ? 'accent' : 'yellow';
+      return `<div class="bar-row">
+        <span class="bar-label">${count}</span>
+        <div class="bar-track">
+          <div class="bar-fill ${color}" style="width:${pct}%"></div><span class="bar-text-outside">${freq} game${freq !== 1 ? 's' : ''}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+  // Game-by-game line for skater count trend
+  const rosterChartW = Math.max(skaterCounts.length * 20, 400);
+  const rosterChartH = 140;
+  const rosterPad = 30;
+  const rosterMinY = Math.max(minSkaters - 1, 0);
+  const rosterMaxY = maxSkaters + 1;
+  const rosterXStep = skaterCounts.length > 1 ? (rosterChartW - rosterPad * 2) / (skaterCounts.length - 1) : 0;
+  function rosterYPos(v) { return rosterChartH - rosterPad - ((v - rosterMinY) / (rosterMaxY - rosterMinY)) * (rosterChartH - rosterPad * 2); }
+
+  let rosterPath = 'M';
+  skaterCounts.forEach((g, i) => { rosterPath += (i ? 'L' : '') + (rosterPad + i * rosterXStep) + ',' + rosterYPos(g.count); });
+  const rosterDots = skaterCounts.map((g, i) => {
+    const x = rosterPad + i * rosterXStep;
+    const y = rosterYPos(g.count);
+    const color = g.count >= 11 ? 'var(--green)' : g.count >= 9 ? 'var(--accent)' : 'var(--yellow)';
+    return `<circle cx="${x}" cy="${y}" r="4" fill="${color}" style="cursor:help"><title>${g.date} vs ${g.opponent}\n${g.count} skaters</title></circle>`;
+  }).join('');
+
+  // Y grid lines
+  let rosterYLabels = '';
+  for (let v = rosterMinY; v <= rosterMaxY; v++) {
+    const y = rosterYPos(v);
+    rosterYLabels += `<text x="${rosterPad - 6}" y="${y + 3}" fill="rgba(255,255,255,0.3)" font-size="9" text-anchor="end" font-family="IBM Plex Mono,monospace">${v}</text>`;
+    rosterYLabels += `<line x1="${rosterPad}" y1="${y}" x2="${rosterChartW - rosterPad}" y2="${y}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
+  }
+  // X labels
+  let rosterXLabels = '';
+  const rosterXStep2 = Math.max(1, Math.floor(skaterCounts.length / 10));
+  skaterCounts.forEach((g, i) => {
+    if (i % rosterXStep2 === 0 || i === skaterCounts.length - 1) {
+      rosterXLabels += `<text x="${rosterPad + i * rosterXStep}" y="${rosterChartH - 8}" fill="rgba(255,255,255,0.3)" font-size="9" text-anchor="middle" font-family="IBM Plex Mono,monospace">${i + 1}</text>`;
+    }
+  });
+
+  // Correlation: skater count vs result
+  const countResults = {};
+  skaterCounts.forEach(g => {
+    if (!countResults[g.count]) countResults[g.count] = { w: 0, l: 0, t: 0, total: 0 };
+    countResults[g.count].total++;
+  });
+  eaglesGames.forEach((g, i) => {
+    const r = getResult(g);
+    const c = skaterCounts[i].count;
+    if (r === 'W') countResults[c].w++;
+    else if (r === 'L') countResults[c].l++;
+    else countResults[c].t++;
+  });
+  const countResultRows = Object.entries(countResults)
+    .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
+    .map(([count, s]) => {
+      const winPct = s.total > 0 ? ((s.w + s.t * 0.5) / s.total * 100).toFixed(0) : '-';
+      return `<tr>
+        <td class="center mono">${count}</td>
+        <td class="center mono">${s.total}</td>
+        <td class="center mono" style="color:var(--green)">${s.w}</td>
+        <td class="center mono" style="color:var(--red)">${s.l}</td>
+        <td class="center mono" style="color:var(--yellow)">${s.t}</td>
+        <td class="center mono" style="font-weight:700">${winPct}%</td>
+      </tr>`;
+    }).join('');
+
   return `
     <div class="tab-panel" id="tab-analytics">
       <div class="analytics-grid">
@@ -2486,6 +2577,40 @@ function renderAnalytics(games) {
         <div class="card">
           <div class="card-title">League Penalty Leaders</div>
           <div class="bar-chart">${leaguePenBars || '<div class="no-data">No penalties</div>'}</div>
+        </div>
+
+        <div class="card full-width">
+          <div class="card-title">Eagles Roster Size Analysis</div>
+          <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+            <div class="mini-stat"><div class="mini-val">${avgSkaters}</div><div class="mini-label">Avg Skaters</div></div>
+            <div class="mini-stat"><div class="mini-val">${medianSkaters}</div><div class="mini-label">Median</div></div>
+            <div class="mini-stat"><div class="mini-val">${minSkaters}</div><div class="mini-label">Minimum</div></div>
+            <div class="mini-stat"><div class="mini-val">${maxSkaters}</div><div class="mini-label">Maximum</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:8px">Skaters Dressed per Game (distribution)</div>
+              <div class="bar-chart">${skaterDistBars}</div>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:8px">Win Rate by Roster Size</div>
+              <table>
+                <thead><tr><th class="center">Skaters</th><th class="center">GP</th><th class="center">W</th><th class="center">L</th><th class="center">T</th><th class="center">Win %</th></tr></thead>
+                <tbody>${countResultRows}</tbody>
+              </table>
+            </div>
+          </div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:8px">Skaters per Game (over season)</div>
+          <div style="overflow-x:auto">
+            <svg width="${rosterChartW}" height="${rosterChartH}" style="display:block">
+              ${rosterYLabels}${rosterXLabels}
+              <path d="${rosterPath}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+              ${rosterDots}
+              <line x1="${rosterPad}" y1="${rosterYPos(parseFloat(avgSkaters))}" x2="${rosterChartW - rosterPad}" y2="${rosterYPos(parseFloat(avgSkaters))}" stroke="var(--text-dim)" stroke-width="1" stroke-dasharray="4,4"/>
+              <text x="${rosterChartW - rosterPad + 4}" y="${rosterYPos(parseFloat(avgSkaters)) + 3}" fill="var(--text-dim)" font-size="9" font-family="IBM Plex Mono,monospace">avg ${avgSkaters}</text>
+            </svg>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text-dim)">Game number on x-axis. Dot color: <span style="color:var(--green)">11+</span> skaters, <span style="color:var(--accent)">9-10</span>, <span style="color:var(--yellow)">&lt;9</span>. Dashed line = season average.</div>
         </div>
 
         <div class="card full-width">
