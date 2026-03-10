@@ -2624,19 +2624,89 @@ function renderAnalytics(games) {
     </tr>`;
   }).join('');
 
-  // 2. Penalty analysis (Eagles)
+  // 2. Penalty analysis (Eagles vs Opponents)
   const penaltyCounts = {};
+  const oppPenaltyCounts = {};
   const penaltyPlayers = {};
+  let eaglesTotalPen = 0, oppTotalPen = 0;
+  let eaglesTotalPIM = 0, oppTotalPIM = 0;
+  const eaglesPenByPeriod = { 1: 0, 2: 0, 3: 0 };
+  const oppPenByPeriod = { 1: 0, 2: 0, 3: 0 };
+  const eaglesPIMByPeriod = { 1: 0, 2: 0, 3: 0 };
+  const oppPIMByPeriod = { 1: 0, 2: 0, 3: 0 };
   eaglesGames.forEach(g => {
-    const side = getEaglesSide(g);
-    g[side].penalties.forEach(p => {
+    const ourSide = getEaglesSide(g);
+    const theirSide = ourSide === 'home' ? 'visitor' : 'home';
+    g[ourSide].penalties.forEach(p => {
       penaltyCounts[p.code] = (penaltyCounts[p.code] || 0) + 1;
+      eaglesTotalPen++;
+      const mins = typeof p.minutes === 'number' ? p.minutes : parseInt(p.minutes) || 0;
+      eaglesTotalPIM += mins;
+      if (eaglesPenByPeriod[p.period] !== undefined) eaglesPenByPeriod[p.period]++;
+      if (eaglesPIMByPeriod[p.period] !== undefined) eaglesPIMByPeriod[p.period] += mins;
       const key = p.player;
       if (!penaltyPlayers[key]) penaltyPlayers[key] = { name: p.name || p.player, pim: 0, count: 0, number: p.number };
-      penaltyPlayers[key].pim += (typeof p.minutes === 'number' ? p.minutes : parseInt(p.minutes) || 0);
+      penaltyPlayers[key].pim += mins;
       penaltyPlayers[key].count++;
     });
+    g[theirSide].penalties.forEach(p => {
+      oppPenaltyCounts[p.code] = (oppPenaltyCounts[p.code] || 0) + 1;
+      oppTotalPen++;
+      const mins = typeof p.minutes === 'number' ? p.minutes : parseInt(p.minutes) || 0;
+      oppTotalPIM += mins;
+      if (oppPenByPeriod[p.period] !== undefined) oppPenByPeriod[p.period]++;
+      if (oppPIMByPeriod[p.period] !== undefined) oppPIMByPeriod[p.period] += mins;
+    });
   });
+
+  // Side-by-side penalty type comparison
+  const allPenCodes = new Set([...Object.keys(penaltyCounts), ...Object.keys(oppPenaltyCounts)]);
+  const penCompare = [...allPenCodes].map(code => ({
+    code, name: PENALTY_NAMES[code] || code,
+    eagles: penaltyCounts[code] || 0, opp: oppPenaltyCounts[code] || 0
+  })).sort((a, b) => (b.eagles + b.opp) - (a.eagles + a.opp));
+  const maxPenCompare = Math.max(...penCompare.map(p => Math.max(p.eagles, p.opp)), 1);
+  const penCompareRows = penCompare.map(p => {
+    const ePct = (p.eagles / maxPenCompare) * 100;
+    const oPct = (p.opp / maxPenCompare) * 100;
+    const eColor = p.eagles > p.opp ? 'color:var(--red)' : p.eagles < p.opp ? 'color:var(--green)' : '';
+    const oColor = p.opp > p.eagles ? 'color:var(--red)' : p.opp < p.eagles ? 'color:var(--green)' : '';
+    return `<tr>
+      <td style="font-weight:600;white-space:nowrap">${p.code}</td>
+      <td style="font-size:11px;color:var(--text-dim)">${p.name}</td>
+      <td class="center mono" style="${eColor}">${p.eagles}</td>
+      <td class="center mono" style="${oColor}">${p.opp}</td>
+      <td class="center mono" style="font-weight:700;${p.eagles - p.opp > 0 ? 'color:var(--red)' : p.eagles - p.opp < 0 ? 'color:var(--green)' : ''}">${p.eagles - p.opp > 0 ? '+' : ''}${p.eagles - p.opp}</td>
+    </tr>`;
+  }).join('');
+
+  // Penalties by period chart (paired bars like scoring by period)
+  const maxPeriodPen = Math.max(...Object.values(eaglesPenByPeriod), ...Object.values(oppPenByPeriod), 1);
+  const penPeriodBars = [1, 2, 3].map(p => {
+    const eH = (eaglesPenByPeriod[p] / maxPeriodPen) * 180;
+    const oH = (oppPenByPeriod[p] / maxPeriodPen) * 180;
+    return `<div class="period-bar-group">
+      <div class="period-bar-pair">
+        <div class="period-bar" style="height:${eH}px;background:var(--accent)"><span class="bar-val">${eaglesPenByPeriod[p]}</span></div>
+        <div class="period-bar" style="height:${oH}px;background:var(--red)"><span class="bar-val">${oppPenByPeriod[p]}</span></div>
+      </div>
+      <span class="period-bar-label">P${p}</span>
+    </div>`;
+  }).join('');
+
+  // PIM by period chart
+  const maxPeriodPIM = Math.max(...Object.values(eaglesPIMByPeriod), ...Object.values(oppPIMByPeriod), 1);
+  const pimPeriodBars = [1, 2, 3].map(p => {
+    const eH = (eaglesPIMByPeriod[p] / maxPeriodPIM) * 180;
+    const oH = (oppPIMByPeriod[p] / maxPeriodPIM) * 180;
+    return `<div class="period-bar-group">
+      <div class="period-bar-pair">
+        <div class="period-bar" style="height:${eH}px;background:var(--accent)"><span class="bar-val">${eaglesPIMByPeriod[p]}</span></div>
+        <div class="period-bar" style="height:${oH}px;background:var(--red)"><span class="bar-val">${oppPIMByPeriod[p]}</span></div>
+      </div>
+      <span class="period-bar-label">P${p}</span>
+    </div>`;
+  }).join('');
 
   const topPenCodes = Object.entries(penaltyCounts).sort((a, b) => b[1] - a[1]);
   const maxPenCode = topPenCodes.length ? topPenCodes[0][1] : 1;
@@ -3145,10 +3215,65 @@ function renderAnalytics(games) {
     </div>
   `;
 
-  // --- Tab: Discipline ---
+  // --- Tab: Penalties ---
+  const eaglesPenPG = eaglesGames.length ? (eaglesTotalPen / eaglesGames.length).toFixed(1) : '0';
+  const oppPenPG = eaglesGames.length ? (oppTotalPen / eaglesGames.length).toFixed(1) : '0';
+  const eaglesPIMPG = eaglesGames.length ? (eaglesTotalPIM / eaglesGames.length).toFixed(1) : '0';
+  const oppPIMPG = eaglesGames.length ? (oppTotalPIM / eaglesGames.length).toFixed(1) : '0';
+  const penDiff = eaglesTotalPen - oppTotalPen;
+  const pimDiff = eaglesTotalPIM - oppTotalPIM;
   const disciplineHtml = `
     <div class="tab-panel" id="tab-penalties">
       <div class="analytics-grid">
+
+        <div class="card full-width">
+          <div class="card-title">Eagles vs Opponents — Penalty Summary</div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+            <div class="mini-stat"><div class="mini-val" style="color:var(--accent)">${eaglesTotalPen}</div><div class="mini-label">Eagles Penalties</div></div>
+            <div class="mini-stat"><div class="mini-val" style="color:var(--red)">${oppTotalPen}</div><div class="mini-label">Opponent Penalties</div></div>
+            <div class="mini-stat"><div class="mini-val" style="${penDiff > 0 ? 'color:var(--red)' : penDiff < 0 ? 'color:var(--green)' : ''}">${penDiff > 0 ? '+' : ''}${penDiff}</div><div class="mini-label">Penalty Diff</div></div>
+            <div class="mini-stat"><div class="mini-val" style="color:var(--accent)">${eaglesTotalPIM}</div><div class="mini-label">Eagles PIM</div></div>
+            <div class="mini-stat"><div class="mini-val" style="color:var(--red)">${oppTotalPIM}</div><div class="mini-label">Opponent PIM</div></div>
+            <div class="mini-stat"><div class="mini-val" style="${pimDiff > 0 ? 'color:var(--red)' : pimDiff < 0 ? 'color:var(--green)' : ''}">${pimDiff > 0 ? '+' : ''}${pimDiff}</div><div class="mini-label">PIM Diff</div></div>
+            <div class="mini-stat"><div class="mini-val">${eaglesPenPG}</div><div class="mini-label">Eagles Pen/G</div></div>
+            <div class="mini-stat"><div class="mini-val">${oppPenPG}</div><div class="mini-label">Opp Pen/G</div></div>
+          </div>
+        </div>
+
+        <div class="card full-width">
+          <div class="card-title">Penalty Type Comparison — Eagles vs Opponents</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Code</th><th>Infraction</th>
+                <th class="center" style="color:var(--accent)">Eagles</th>
+                <th class="center" style="color:var(--red)">Opponents</th>
+                <th class="center">Diff</th>
+              </tr></thead>
+              <tbody>${penCompareRows}</tbody>
+            </table>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text-dim)">Green = fewer than opponent. Red = more than opponent.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Penalties by Period</div>
+          <div class="period-breakdown">${penPeriodBars}</div>
+          <div class="legend">
+            <div class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span> Eagles</div>
+            <div class="legend-item"><span class="legend-dot" style="background:var(--red)"></span> Opponents</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">PIM by Period</div>
+          <div class="period-breakdown">${pimPeriodBars}</div>
+          <div class="legend">
+            <div class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span> Eagles</div>
+            <div class="legend-item"><span class="legend-dot" style="background:var(--red)"></span> Opponents</div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-title">Eagles Penalty Breakdown</div>
           <div class="bar-chart">${penCodeBars || '<div class="no-data">No penalties recorded</div>'}</div>
