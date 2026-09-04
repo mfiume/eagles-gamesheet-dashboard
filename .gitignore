@@ -1,3 +1,8 @@
 node_modules/
 index-plain.html
 *.log
+
+# Regenerated from data/ by export-pdfs.js, and they carry full player names
+# that the JSON no longer does. Nothing links to them.
+pdfs/
+.shots/

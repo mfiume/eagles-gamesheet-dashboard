@@ -956,7 +956,17 @@ const PENALTY_NAMES = {
 };
 
 function toTitleCase(str) {
-  return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  // Gamesheets shout every name, so they have to be re-cased - but a blanket
+  // lowercase turns McCue into Mccue and O'Brien into O'brien, which is a kid's
+  // own name spelt wrong on a page their family looks at.
+  const word = (w) => {
+    const cased = w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    return cased
+      .replace(/^(Mc|Mac)(.)/, (_, p, c) => p + c.toUpperCase())
+      .replace(/^(O|D|L)'(.)/, (_, p, c) => p + "'" + c.toUpperCase())
+      .replace(/-(.)/g, (_, c) => '-' + c.toUpperCase());
+  };
+  return str.split(' ').map(word).join(' ');
 }
 
 function getEaglesSide(game) {
@@ -1835,7 +1845,12 @@ function buildPlayerStats(games) {
       // Track roster appearances
       sideData.roster.forEach(p => {
         if (p.status !== 'active') return;
-        const key = `${teamName}|${p.name}`;
+        // Keyed by number as well as surname. Names carry no first name any
+        // more, so two brothers on one team - Robertson #8 and #75 dressed
+        // together in all 37 games - would otherwise merge into a single row
+        // with 68 games played. The cost is that a player who changed sweater
+        // mid-season splits into two rows, which is the far smaller error.
+        const key = `${teamName}|${p.number}|${p.name}`;
         if (!players[key]) {
           players[key] = { name: p.name, team: teamName, number: p.number, position: p.position, gp: 0, g: 0, a: 0, pts: 0, pim: 0, gameGoals: {} };
         }
@@ -1848,7 +1863,7 @@ function buildPlayerStats(games) {
       });
       // Track goals
       sideData.scoring.forEach(s => {
-        const scorerKey = `${teamName}|${s.goalScorer}`;
+        const scorerKey = `${teamName}|${s.goalScorerNumber}|${s.goalScorer}`;
         if (players[scorerKey]) {
           players[scorerKey].g++;
           players[scorerKey].pts++;
@@ -1856,17 +1871,17 @@ function buildPlayerStats(games) {
           players[scorerKey].gameGoals[game.isoDate]++;
         }
         if (s.assist1) {
-          const a1Key = `${teamName}|${s.assist1}`;
+          const a1Key = `${teamName}|${s.assist1Number}|${s.assist1}`;
           if (players[a1Key]) { players[a1Key].a++; players[a1Key].pts++; }
         }
         if (s.assist2) {
-          const a2Key = `${teamName}|${s.assist2}`;
+          const a2Key = `${teamName}|${s.assist2Number}|${s.assist2}`;
           if (players[a2Key]) { players[a2Key].a++; players[a2Key].pts++; }
         }
       });
       // Track PIM
       sideData.penalties.forEach(p => {
-        const penKey = `${teamName}|${p.player}`;
+        const penKey = `${teamName}|${p.number}|${p.player}`;
         if (players[penKey]) {
           players[penKey].pim += (typeof p.minutes === 'number' ? p.minutes : parseInt(p.minutes) || 0);
         }
@@ -2318,7 +2333,8 @@ function renderRosterForTeam(games, teamName) {
     const sideData = g[side];
     sideData.roster.forEach(p => {
       if (p.status !== 'active') return;
-      const key = p.name;
+      // Number included for the same reason as buildPlayerStats.
+      const key = `${p.number}|${p.name}`;
       if (!players[key]) {
         players[key] = { name: p.name, number: p.number, position: p.position, gp: 0 };
       }

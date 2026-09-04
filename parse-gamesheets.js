@@ -6,6 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { redactGame } = require('./redact');
 
 const inputDir = process.argv[2] || '/Users/mfiume/Downloads/Eagles Gamesheets';
 const outputFile = process.argv[3] || path.join(__dirname, 'data', 'games.json');
@@ -333,14 +334,16 @@ const files = fs.readdirSync(inputDir)
 console.log(`Parsing ${files.length} gamesheet files...`);
 
 const games = files.map(f => {
-  const game = parseGamesheet(path.join(inputDir, f));
+  // Redacted the moment it is parsed, so the full names never reach a file.
+  const game = redactGame(parseGamesheet(path.join(inputDir, f)));
   const totalGoals = game.home.scoring.length + game.visitor.scoring.length;
   const totalPens = game.home.penalties.length + game.visitor.penalties.length;
   console.log(`  ${f}: ${game.homeTeam} ${game.homeScore} - ${game.visitorScore} ${game.visitorTeam} (${totalGoals} goals, ${totalPens} penalties)`);
   return game;
 });
 
-// Fix known goalies whose position is missing in gamesheet data
+// Fix known goalies whose position is missing in gamesheet data.
+// Surnames, because the names have been redacted by the time this runs.
 const KNOWN_GOALIES = ['BONNER', 'HICKS', 'jankowski'];
 games.forEach(g => {
   ['home', 'visitor'].forEach(side => {
