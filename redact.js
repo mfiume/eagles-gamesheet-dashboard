@@ -12,12 +12,14 @@
 /**
  * Particles that belong to the surname, not to the given names.
  *
- * Without this list "SAM DE VRIES" would become "SCOLA", which is simply
- * the wrong name. With it, the twelve three-token names in the 25-26 data come
- * out right in eleven cases; the twelfth ("ALEX MORGAN ANDERSEN") could
- * be a middle name or half a compound surname and there is no way to tell from
- * here, so it redacts to "ANDERSEN" — erring towards dropping a given name
- * rather than keeping one.
+ * Without this list "SAM DE VRIES" would become "VRIES", which is simply the
+ * wrong name. With it, the twelve three-token names in the 25-26 data come out
+ * right in eleven cases; in the twelfth the middle token could be a middle name
+ * or half a compound surname, and there is no way to tell from here, so it is
+ * dropped — erring towards dropping a given name rather than keeping one.
+ *
+ * The examples in this file are invented. Illustrating the rule with the names
+ * it exists to remove would put them back in a public repository.
  */
 const SURNAME_PARTICLES = new Set([
   'da', 'das', 'de', 'del', 'della', 'di', 'do', 'dos', 'du',
@@ -25,9 +27,9 @@ const SURNAME_PARTICLES = new Set([
 ])
 
 /**
- * 'RILEY OKONKWO' -> 'OKONKWO'
- * 'SAM DE VRIES'     -> 'DE VRIES'
- * 'JAMIE LEE TREMBLAY' -> 'TREMBLAY'
+ * 'RILEY OKONKWO'       -> 'OKONKWO'
+ * 'SAM DE VRIES'        -> 'DE VRIES'
+ * 'JAMIE LEE TREMBLAY'  -> 'TREMBLAY'
  *
  * A single-token name is returned untouched: there is no way to know whether it
  * is a given name or a surname, and mangling it would help nobody.
@@ -37,15 +39,24 @@ function redactName(name) {
   const parts = name.trim().split(/\s+/)
   if (parts.length < 2) return name
 
+  // Already a surname. A name whose first token is a particle is a compound
+  // surname, not a given name followed by one, so dropping that token would
+  // turn DE VRIES into VRIES — the wrong name, and the exact failure the
+  // particle list exists to prevent. Without this guard redact-data.js is not
+  // idempotent, which it is documented to be: a second run mangled every
+  // compound surname in the season.
+  if (isParticle(parts[0])) return name
+
   let rest = parts.slice(1)
   // A second given name, where what follows is clearly the surname.
-  while (
-    rest.length > 1 &&
-    !SURNAME_PARTICLES.has(rest[0].toLowerCase().replace(/\.$/, ''))
-  ) {
+  while (rest.length > 1 && !isParticle(rest[0])) {
     rest = rest.slice(1)
   }
   return rest.join(' ')
+}
+
+function isParticle(token) {
+  return SURNAME_PARTICLES.has(token.toLowerCase().replace(/\.$/, ''))
 }
 
 /** Every place a player's name appears in a parsed game. */

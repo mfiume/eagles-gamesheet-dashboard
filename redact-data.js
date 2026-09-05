@@ -26,12 +26,14 @@ if (fs.existsSync(goaliesFile)) {
   for (const [id, name] of Object.entries(goalies.assignments ?? {})) {
     goalies.assignments[id] = redactName(name)
   }
-  if (goalies._rules) goalies._rules = redactName_inProse(goalies._rules)
   fs.writeFileSync(goaliesFile, JSON.stringify(goalies, null, 2))
   console.log('Redacted data/goalie_assignments.json')
 }
 
-/** The rules note mentions goalies by first name in prose. */
-function redactName_inProse(text) {
-  return text.replace(/\bBonner\b/g, 'Bonner').replace(/\bHicks\b/g, 'Hicks')
-}
+/*
+ * The rules note in goalie_assignments.json used to name the two goalies by
+ * first name in prose, and a pass here rewrote each to their surname. It was a
+ * one-off — the committed note carries surnames now — and the mapping it needed
+ * was two children's given names spelled out in a public file, which is the
+ * thing this script exists to remove. It is gone rather than kept for symmetry.
+ */

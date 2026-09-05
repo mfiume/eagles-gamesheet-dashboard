@@ -29,15 +29,18 @@ The rule drops the first token, and then any second given name whose successor
 is clearly the surname. A short list of surname particles keeps compound names
 intact:
 
+The examples below are invented, for the same reason the data is redacted:
+
 | Full name | Stored as |
 | --- | --- |
 | `RILEY OKONKWO` | `OKONKWO` |
 | `SAM DE VRIES` | `DE VRIES` |
 | `JAMIE LEE TREMBLAY` | `TREMBLAY` |
 
-One case in the 25-26 data is genuinely ambiguous — `ALEX MORGAN ANDERSEN` could be a middle name or half a compound surname, and there is no
-way to tell from here. It redacts to `ANDERSEN`, erring towards dropping a
-given name rather than keeping one.
+One case in the 25-26 data is genuinely ambiguous — a three-token name whose
+middle token could be a middle name or half a compound surname, with no way to
+tell from here. It drops the middle token, erring towards dropping a given name
+rather than keeping one.
 
 **Team officials and referees are left alone.** They are adults in a named
 volunteer role, and the coach-family badge works by matching a player's surname
