@@ -46,12 +46,19 @@ rather than keeping one.
 volunteer role, and the coach-family badge works by matching a player's surname
 against theirs. Changing that is a separate decision from protecting the kids.
 
-**Two caveats worth knowing.** Git history still holds the original full names,
-and the redaction only changes the current files; purging the history is a
-separate job (feasible here, since the repo has no forks). And the seven PDFs
-under `pdfs/` were removed and gitignored — they carried full names that the
-JSON no longer does, they are regenerated from the data by `export-pdfs.js`, and
-nothing linked to them.
+**The history was purged too.** Redacting the current files left every earlier
+commit holding what they used to say, so all 49 commits were rewritten: nine
+copies of `data/games.json` and three of `goalie_assignments.json` redacted with
+the rule below, the seven PDFs under `pdfs/` dropped, and two commit messages
+that named a child rewritten. Nothing else moved — the tree at HEAD is byte for
+byte what it was, so the published site is unchanged. The PDFs are gitignored
+now; `export-pdfs.js` regenerates them from the redacted data, and nothing
+linked to them.
+
+**One caveat is left, deliberately.** A force-push does not garbage-collect, so
+GitHub still serves the pre-purge commits to anyone who has one of their SHAs,
+and will until it collects them. Closing that means either asking GitHub Support
+to run `gc` or deleting and recreating the repository; neither has been done.
 
 ## Player identity is a number, not a name
 
